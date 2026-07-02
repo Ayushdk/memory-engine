@@ -10,5 +10,4 @@ data/chroma/*
 data/backups/*
 data/exports/*
 !data/**/README.md
-uv.lock
 
