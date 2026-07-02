@@ -1,0 +1,31 @@
+[project]
+name = "openmemory-engine"
+version = "0.1.0"
+description = "Local-first memory engine backend for OpenMemory OS."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi",
+  "uvicorn",
+  "pydantic",
+  "pydantic-settings",
+  "chromadb",
+  "sentence-transformers",
+  "loguru",
+]
+
+[dependency-groups]
+dev = [
+  "pytest",
+  "pytest-asyncio",
+  "httpx",
+  "ruff",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
