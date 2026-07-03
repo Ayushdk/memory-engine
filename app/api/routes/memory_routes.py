@@ -2,10 +2,11 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
-from app.api.dependencies import get_ingestion_pipeline, get_memory_repository
+from app.api.dependencies import get_ingestion_pipeline, get_memory_admin, get_memory_repository
 from app.engine.orchestrator.ingestion_pipeline import IngestionPipeline, IngestionResult
+from app.engine.orchestrator.memory_admin import DeletionResult, MemoryAdmin
 from app.memory.repositories.memory_repository import MemoryRepository
 from app.models.enums import MemoryCategory, MemoryStatus, MemoryView
 from app.models.schemas.memory_requests import IngestRequest
@@ -27,6 +28,17 @@ def list_memories(
         view=view, project_id=project_id, category=category, status=status, limit=limit
     )
     return MemoryListResponse(memories=memories, count=len(memories))
+
+
+@router.delete("/memories/{memory_id}")
+def delete_memory(
+    memory_id: str,
+    admin: Annotated[MemoryAdmin, Depends(get_memory_admin)],
+) -> DeletionResult:
+    result = admin.delete(memory_id)
+    if not result.found and result.synchronization_status == "not_found":
+        raise HTTPException(status_code=404, detail=f"memory '{memory_id}' not found")
+    return result
 
 
 @router.post("/ingest")

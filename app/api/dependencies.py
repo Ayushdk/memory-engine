@@ -11,6 +11,7 @@ from app.engine.classifier.memory_classifier import create_classifier
 from app.engine.context.context_builder import ContextBuilder
 from app.engine.orchestrator.context_pipeline import ContextPipeline
 from app.engine.orchestrator.ingestion_pipeline import IngestionPipeline
+from app.engine.orchestrator.memory_admin import MemoryAdmin
 from app.engine.retrieval.ranking_engine import RankingEngine
 from app.engine.retrieval.retrieval_engine import RetrievalEngine
 from app.engine.router.storage_router import RuleStorageRouter
@@ -35,6 +36,13 @@ def _get_vector_store(state) -> ChromaVectorStore:
 
 def get_memory_repository(request: Request) -> MemoryRepository:
     return _get_repository(request.app.state)
+
+
+def get_memory_admin(request: Request) -> MemoryAdmin:
+    state = request.app.state
+    if getattr(state, "memory_admin", None) is None:
+        state.memory_admin = MemoryAdmin(_get_repository(state), _get_vector_store(state))
+    return state.memory_admin
 
 
 def get_ingestion_pipeline(request: Request) -> IngestionPipeline:
