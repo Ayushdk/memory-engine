@@ -1,1 +1,127 @@
+"""Unified memory repository — the only code that reads/writes the memories table."""
 
+from __future__ import annotations  # the `list` method shadows builtin list in annotations
+
+import json
+import sqlite3
+from datetime import datetime
+
+from app.models.domain.memory import Memory
+from app.models.enums import MemoryCategory, MemoryStatus, MemoryView
+from app.utils.time import utc_now
+
+_COLUMNS = (
+    "id, content, summary, category, view, project_id, importance, confidence, "
+    "status, supersedes, source_json, tags_json, created_at, updated_at, "
+    "last_accessed_at, access_count"
+)
+
+
+def _to_row(m: Memory) -> tuple:
+    return (
+        m.id,
+        m.content,
+        m.summary,
+        m.category.value,
+        m.view.value,
+        m.project_id,
+        m.importance,
+        m.confidence.value,
+        m.status.value,
+        m.supersedes,
+        m.source.model_dump_json() if m.source else None,
+        json.dumps(m.tags),
+        m.created_at.isoformat(),
+        m.updated_at.isoformat(),
+        m.last_accessed_at.isoformat() if m.last_accessed_at else None,
+        m.access_count,
+    )
+
+
+def _from_row(row: sqlite3.Row) -> Memory:
+    return Memory(
+        id=row["id"],
+        content=row["content"],
+        summary=row["summary"],
+        category=row["category"],
+        view=row["view"],
+        project_id=row["project_id"],
+        importance=row["importance"],
+        confidence=row["confidence"],
+        status=row["status"],
+        supersedes=row["supersedes"],
+        source=json.loads(row["source_json"]) if row["source_json"] else None,
+        tags=json.loads(row["tags_json"]),
+        created_at=datetime.fromisoformat(row["created_at"]),
+        updated_at=datetime.fromisoformat(row["updated_at"]),
+        last_accessed_at=(
+            datetime.fromisoformat(row["last_accessed_at"]) if row["last_accessed_at"] else None
+        ),
+        access_count=row["access_count"],
+    )
+
+
+class MemoryRepository:
+    def __init__(self, conn: sqlite3.Connection) -> None:
+        self._conn = conn
+
+    def save(self, memory: Memory) -> None:
+        """Insert or replace (upsert keyed on id)."""
+        placeholders = ", ".join("?" * 16)
+        with self._conn:
+            self._conn.execute(
+                f"INSERT OR REPLACE INTO memories ({_COLUMNS}) VALUES ({placeholders})",
+                _to_row(memory),
+            )
+
+    def get(self, memory_id: str) -> Memory | None:
+        row = self._conn.execute(
+            f"SELECT {_COLUMNS} FROM memories WHERE id = ?", (memory_id,)
+        ).fetchone()
+        return _from_row(row) if row else None
+
+    def list(
+        self,
+        view: MemoryView | None = None,
+        project_id: str | None = None,
+        category: MemoryCategory | None = None,
+        status: MemoryStatus | None = MemoryStatus.ACTIVE,
+    ) -> list[Memory]:
+        clauses, params = [], []
+        for column, value in (
+            ("view", view),
+            ("project_id", project_id),
+            ("category", category),
+            ("status", status),
+        ):
+            if value is not None:
+                clauses.append(f"{column} = ?")
+                params.append(value.value if hasattr(value, "value") else value)
+        where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+        rows = self._conn.execute(
+            f"SELECT {_COLUMNS} FROM memories {where} ORDER BY id", params
+        ).fetchall()
+        return [_from_row(r) for r in rows]
+
+    def set_status(self, memory_id: str, status: MemoryStatus) -> None:
+        with self._conn:
+            self._conn.execute(
+                "UPDATE memories SET status = ?, updated_at = ? WHERE id = ?",
+                (status.value, utc_now().isoformat(), memory_id),
+            )
+
+    def record_access(self, memory_ids: list[str]) -> None:
+        """Retrieval Engine bookkeeping: bump access stats for returned memories."""
+        now = utc_now().isoformat()
+        with self._conn:
+            self._conn.executemany(
+                "UPDATE memories SET last_accessed_at = ?, access_count = access_count + 1 "
+                "WHERE id = ?",
+                [(now, mid) for mid in memory_ids],
+            )
+
+    def delete(self, memory_id: str) -> bool:
+        """Hard delete — the user's right to forget."""
+        with self._conn:
+            cur = self._conn.execute("DELETE FROM memories WHERE id = ?", (memory_id,))
+        return cur.rowcount > 0
