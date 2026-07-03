@@ -26,7 +26,7 @@ class FakeEmbedder:
 
     def embed(self, text: str) -> list[float]:
         seed = hashlib.sha256(self.GROUPS.get(text, text).encode()).digest()
-        vec = [b - 127.5 for b in seed[:8]]
+        vec = [b - 127.5 for b in seed]  # 32 dims: unrelated texts stay dissimilar
         norm = math.sqrt(sum(v * v for v in vec))
         return [v / norm for v in vec]
 
