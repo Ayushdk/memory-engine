@@ -86,6 +86,7 @@ class MemoryRepository:
         project_id: str | None = None,
         category: MemoryCategory | None = None,
         status: MemoryStatus | None = MemoryStatus.ACTIVE,
+        limit: int | None = None,
     ) -> list[Memory]:
         clauses, params = [], []
         for column, value in (
@@ -98,8 +99,12 @@ class MemoryRepository:
                 clauses.append(f"{column} = ?")
                 params.append(value.value if hasattr(value, "value") else value)
         where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+        suffix = ""
+        if limit is not None:
+            suffix = " LIMIT ?"
+            params.append(limit)
         rows = self._conn.execute(
-            f"SELECT {_COLUMNS} FROM memories {where} ORDER BY id", params
+            f"SELECT {_COLUMNS} FROM memories {where} ORDER BY id{suffix}", params
         ).fetchall()
         return [_from_row(r) for r in rows]
 

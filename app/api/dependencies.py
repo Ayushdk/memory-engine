@@ -33,6 +33,10 @@ def _get_vector_store(state) -> ChromaVectorStore:
     return state.vector_store
 
 
+def get_memory_repository(request: Request) -> MemoryRepository:
+    return _get_repository(request.app.state)
+
+
 def get_ingestion_pipeline(request: Request) -> IngestionPipeline:
     state = request.app.state
     if getattr(state, "ingestion_pipeline", None) is None:
