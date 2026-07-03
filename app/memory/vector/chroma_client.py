@@ -53,6 +53,10 @@ class ChromaVectorStore:
         ids, distances = result["ids"][0], result["distances"][0]
         return [(mid, 1.0 - dist) for mid, dist in zip(ids, distances)]
 
+    def update_status(self, memory_id: str, status: str) -> None:
+        """Metadata-only update; keeps superseded/archived memories out of active queries."""
+        self._collection.update(ids=[memory_id], metadatas=[{"status": status}])
+
     def delete(self, memory_id: str) -> None:
         self._collection.delete(ids=[memory_id])
 
