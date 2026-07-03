@@ -14,6 +14,13 @@ from app.models.domain.memory import Memory
 _COLLECTION = "memories"
 
 
+def active_where(project_id: str | None = None) -> dict:
+    """The hard filter every retrieval shares: status=active, optionally project-scoped."""
+    if project_id:
+        return {"$and": [{"status": "active"}, {"project_id": project_id}]}
+    return {"status": "active"}
+
+
 def _metadata(memory: Memory) -> dict:
     meta = {
         "view": memory.view.value,

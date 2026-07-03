@@ -15,7 +15,7 @@ from app.engine.router.storage_router import RoutingResult, StorageRouter
 from app.engine.scorer.importance_scorer import ImportanceScorer, ScoringResult
 from app.engine.working_memory.working_memory_manager import WorkingMemoryManager
 from app.memory.repositories.memory_repository import MemoryRepository
-from app.memory.vector.chroma_client import ChromaVectorStore
+from app.memory.vector.chroma_client import ChromaVectorStore, active_where
 from app.models.domain.memory import Memory, Source
 from app.models.enums import ClassifierAction, Confidence, MemoryStatus
 from app.services.embedding_service import EmbeddingService
@@ -153,10 +153,9 @@ class IngestionPipeline:
     def _find_update_target(self, embedding: list[float], project_id: str | None) -> str | None:
         """Most similar ACTIVE memory above the config threshold, else None
         (unconfirmed updates fall back to a plain store)."""
-        where: dict = {"status": "active"}
-        if project_id:
-            where = {"$and": [{"status": "active"}, {"project_id": project_id}]}
-        candidates = self._vector_store.query(embedding, n_results=1, where=where)
+        candidates = self._vector_store.query(
+            embedding, n_results=1, where=active_where(project_id)
+        )
         if candidates:
             memory_id, similarity = candidates[0]
             if similarity >= get_settings().update_similarity_threshold:
