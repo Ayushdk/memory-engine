@@ -15,6 +15,11 @@ class ConversationMessage:
     role: Literal["user", "assistant"]
     content: str
     timestamp: datetime = field(default_factory=utc_now)
+    # Ingestion-time classification, persisted so downstream consumers (the
+    # session recap) never re-classify: what the classifier decided and which
+    # rule fired. None = pre-metadata snapshot or not yet classified.
+    action: str | None = None
+    matched_rule: str | None = None
 
 
 class Session(BaseModel):

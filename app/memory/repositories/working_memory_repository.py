@@ -11,7 +11,13 @@ from app.utils.time import utc_now
 def _serialize(messages: list[ConversationMessage]) -> str:
     return json.dumps(
         [
-            {"role": m.role, "content": m.content, "timestamp": m.timestamp.isoformat()}
+            {
+                "role": m.role,
+                "content": m.content,
+                "timestamp": m.timestamp.isoformat(),
+                "action": m.action,
+                "matched_rule": m.matched_rule,
+            }
             for m in messages
         ]
     )
@@ -23,6 +29,8 @@ def _deserialize(snapshot_json: str) -> list[ConversationMessage]:
             role=item["role"],
             content=item["content"],
             timestamp=datetime.fromisoformat(item["timestamp"]),
+            action=item.get("action"),  # .get: snapshots may predate metadata
+            matched_rule=item.get("matched_rule"),
         )
         for item in json.loads(snapshot_json)
     ]

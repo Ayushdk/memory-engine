@@ -21,11 +21,23 @@ class ContextMemory(BaseModel):
     confidence: Confidence
 
 
+class RecentConversation(BaseModel):
+    """Sync-mode handoff excerpt: what the user was just discussing on another
+    platform, so a new conversation inherits momentum, not only facts."""
+
+    model_config = ConfigDict(frozen=True)
+
+    platform: str
+    minutes_ago: int = Field(ge=0)
+    messages: list[str] = Field(default_factory=list)  # "User: …" / "Assistant: …"
+
+
 class ContextSections(BaseModel):
     project_state: str | None = None
     profile: list[str] = Field(default_factory=list)
     relevant_memories: list[ContextMemory] = Field(default_factory=list)
     open_questions: list[str] = Field(default_factory=list)
+    recent_conversation: RecentConversation | None = None  # sync mode only
 
 
 class ContextPack(BaseModel):

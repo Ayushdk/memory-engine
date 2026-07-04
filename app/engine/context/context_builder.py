@@ -10,7 +10,12 @@ from typing import Sequence
 
 from app.core.config import get_settings
 from app.engine.retrieval.ranking_engine import RankingResult
-from app.models.domain.context_pack import ContextMemory, ContextPack, ContextSections
+from app.models.domain.context_pack import (
+    ContextMemory,
+    ContextPack,
+    ContextSections,
+    RecentConversation,
+)
 from app.models.domain.memory import Memory
 from app.models.enums import MemoryCategory, MemoryView
 from app.services.tokenizer_service import estimate_tokens
@@ -27,6 +32,7 @@ class ContextBuilder:
         session_id: str,
         project_state: str | None = None,
         profile_memories: Sequence[Memory] = (),
+        recent_conversation: RecentConversation | None = None,
     ) -> ContextPack:
         profile = [_text(m) for m in profile_memories]
         seen = {m.id for m in profile_memories}
@@ -49,6 +55,8 @@ class ContextBuilder:
             estimate_tokens(project_state or "")
             + sum(estimate_tokens(t) for t in profile)
             + sum(estimate_tokens(t) for t in open_questions)
+            # recap is pre-capped by its own sub-budget; counted, never trimmed here
+            + sum(estimate_tokens(t) for t in (recent_conversation.messages if recent_conversation else []))
         )
         while relevant and fixed + sum(estimate_tokens(_text(m)) for m in relevant) > budget:
             relevant.pop()  # lowest-ranked first
@@ -71,5 +79,6 @@ class ContextBuilder:
                 profile=profile,
                 relevant_memories=relevant_memories,
                 open_questions=open_questions,
+                recent_conversation=recent_conversation,
             ),
         )

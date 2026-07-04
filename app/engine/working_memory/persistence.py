@@ -31,8 +31,12 @@ class PersistentWorkingMemory:
         content: str,
         platform: str = "unknown",
         project_id: str | None = None,
+        action: str | None = None,
+        matched_rule: str | None = None,
     ) -> ConversationMessage:
-        message = self._manager.add_message(session_id, role, content)
+        message = self._manager.add_message(
+            session_id, role, content, action=action, matched_rule=matched_rule
+        )
         self._sessions.touch(session_id, platform, project_id)
         self._snapshots.save_snapshot(session_id, self._manager.get_messages(session_id))
         return message

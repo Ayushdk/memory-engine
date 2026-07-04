@@ -62,12 +62,19 @@ class IngestionPipeline:
         content: str,
         project_id: str | None = None,
     ) -> IngestionResult:
-        self._working_memory.add_message(
-            session_id, role, content, platform=platform, project_id=project_id
-        )
-
+        # Classify first so the buffered message carries its classification —
+        # the session recap reuses this instead of ever re-classifying.
         classification = self._classifier.classify(
             content, self._working_memory.get_messages(session_id)
+        )
+        self._working_memory.add_message(
+            session_id,
+            role,
+            content,
+            platform=platform,
+            project_id=project_id,
+            action=classification.action.value,
+            matched_rule=classification.matched_rule,
         )
 
         if classification.action is ClassifierAction.IGNORE:

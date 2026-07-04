@@ -19,11 +19,18 @@ class WorkingMemoryManager:
         self._buffers: dict[str, deque[ConversationMessage]] = {}
 
     def add_message(
-        self, session_id: str, role: Literal["user", "assistant"], content: str
+        self,
+        session_id: str,
+        role: Literal["user", "assistant"],
+        content: str,
+        action: str | None = None,
+        matched_rule: str | None = None,
     ) -> ConversationMessage:
         """Append a message; the oldest is evicted once the buffer is full."""
         buffer = self._buffers.setdefault(session_id, deque(maxlen=self._capacity))
-        message = ConversationMessage(role=role, content=content)
+        message = ConversationMessage(
+            role=role, content=content, action=action, matched_rule=matched_rule
+        )
         buffer.append(message)
         return message
 

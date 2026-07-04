@@ -36,6 +36,12 @@ class Settings(BaseSettings):
     # Context pack token budget (architecture.md §7)
     context_token_budget: int = 1500
 
+    # Recent Session Recap (sync mode): source-session freshness window,
+    # message window, and the recap's share of the total pack budget.
+    recap_freshness_minutes: int = 30
+    recap_max_messages: int = 12
+    recap_budget_fraction: float = 0.20
+
     # Reflection triggers and thresholds (architecture.md §4)
     reflection_memory_threshold: int = 50
     dedup_similarity_threshold: float = 0.92

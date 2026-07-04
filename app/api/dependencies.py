@@ -77,5 +77,7 @@ def get_context_pipeline(request: Request) -> ContextPipeline:
             ranking_engine=RankingEngine(),
             context_builder=ContextBuilder(),
             repository=_get_repository(state),
+            session_repository=SessionRepository(state.db),
+            working_memory_repository=WorkingMemoryRepository(state.db),
         )
     return state.context_pipeline
