@@ -13,7 +13,7 @@ from app.core.config import get_settings
 from app.engine.classifier.memory_classifier import ClassificationResult, MemoryClassifier
 from app.engine.router.storage_router import RoutingResult, StorageRouter
 from app.engine.scorer.importance_scorer import ImportanceScorer, ScoringResult
-from app.engine.working_memory.working_memory_manager import WorkingMemoryManager
+from app.engine.working_memory.persistence import PersistentWorkingMemory
 from app.memory.repositories.memory_repository import MemoryRepository
 from app.memory.vector.chroma_client import ChromaVectorStore, active_where
 from app.models.domain.memory import Memory, Source
@@ -38,7 +38,7 @@ class IngestionResult:
 class IngestionPipeline:
     def __init__(
         self,
-        working_memory: WorkingMemoryManager,
+        working_memory: PersistentWorkingMemory,
         classifier: MemoryClassifier,
         scorer: ImportanceScorer,
         router: StorageRouter,
@@ -62,7 +62,9 @@ class IngestionPipeline:
         content: str,
         project_id: str | None = None,
     ) -> IngestionResult:
-        self._working_memory.add_message(session_id, role, content)
+        self._working_memory.add_message(
+            session_id, role, content, platform=platform, project_id=project_id
+        )
 
         classification = self._classifier.classify(
             content, self._working_memory.get_messages(session_id)

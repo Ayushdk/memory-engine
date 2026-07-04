@@ -33,9 +33,11 @@ CREATE TABLE IF NOT EXISTS projects (
 );
 
 CREATE TABLE IF NOT EXISTS sessions (
-    id         TEXT PRIMARY KEY,
-    platform   TEXT NOT NULL,
-    started_at TEXT NOT NULL
+    id               TEXT PRIMARY KEY,
+    platform         TEXT NOT NULL,
+    project_id       TEXT,
+    started_at       TEXT NOT NULL,
+    last_activity_at TEXT
 );
 
 CREATE TABLE IF NOT EXISTS working_memory (

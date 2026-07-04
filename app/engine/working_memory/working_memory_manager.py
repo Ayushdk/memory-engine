@@ -34,3 +34,9 @@ class WorkingMemoryManager:
 
     def clear(self, session_id: str) -> None:
         self._buffers.pop(session_id, None)
+
+    def restore(self, snapshots: dict[str, list[ConversationMessage]]) -> None:
+        """Rehydrate buffers (e.g. after a restart). Deques re-apply capacity,
+        so oversized snapshots are trimmed to the newest messages."""
+        for session_id, messages in snapshots.items():
+            self._buffers[session_id] = deque(messages, maxlen=self._capacity)

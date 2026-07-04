@@ -1,14 +1,10 @@
-"""Per-session conversation state: raw messages, not Memory objects."""
+"""Per-session conversation state: raw messages, not Memory objects.
 
-from dataclasses import dataclass, field
-from datetime import datetime
-from typing import Literal
+ConversationMessage moved to models/domain/session.py so repositories can
+persist it without importing engine code (§8 dependency direction); this
+re-export keeps existing engine imports working.
+"""
 
-from app.utils.time import utc_now
+from app.models.domain.session import ConversationMessage
 
-
-@dataclass(frozen=True)
-class ConversationMessage:
-    role: Literal["user", "assistant"]
-    content: str
-    timestamp: datetime = field(default_factory=utc_now)
+__all__ = ["ConversationMessage"]

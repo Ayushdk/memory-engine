@@ -16,8 +16,11 @@ from app.engine.retrieval.ranking_engine import RankingEngine
 from app.engine.retrieval.retrieval_engine import RetrievalEngine
 from app.engine.router.storage_router import RuleStorageRouter
 from app.engine.scorer.importance_scorer import create_scorer
+from app.engine.working_memory.persistence import PersistentWorkingMemory
 from app.engine.working_memory.working_memory_manager import WorkingMemoryManager
 from app.memory.repositories.memory_repository import MemoryRepository
+from app.memory.repositories.session_repository import SessionRepository
+from app.memory.repositories.working_memory_repository import WorkingMemoryRepository
 from app.memory.vector.chroma_client import ChromaVectorStore
 from app.services.embedding_service import get_embedding_service
 
@@ -49,7 +52,11 @@ def get_ingestion_pipeline(request: Request) -> IngestionPipeline:
     state = request.app.state
     if getattr(state, "ingestion_pipeline", None) is None:
         state.ingestion_pipeline = IngestionPipeline(
-            working_memory=WorkingMemoryManager(),
+            working_memory=PersistentWorkingMemory(
+                WorkingMemoryManager(),
+                WorkingMemoryRepository(state.db),
+                SessionRepository(state.db),
+            ),
             classifier=create_classifier(),
             scorer=create_scorer(),
             router=RuleStorageRouter(),

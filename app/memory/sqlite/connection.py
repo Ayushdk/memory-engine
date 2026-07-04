@@ -18,4 +18,12 @@ def create_connection(db_path: Path | str = SQLITE_DB_PATH) -> sqlite3.Connectio
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA foreign_keys=ON")
     conn.executescript(SCHEMA)
+    # ponytail: migration-lite for pre-release dev DBs created before these
+    # columns existed; CREATE IF NOT EXISTS won't add them. Real migration
+    # tooling is explicitly out of V1 (architecture.md §9).
+    for column in ("project_id TEXT", "last_activity_at TEXT"):
+        try:
+            conn.execute(f"ALTER TABLE sessions ADD COLUMN {column}")
+        except sqlite3.OperationalError:
+            pass  # column already exists
     return conn

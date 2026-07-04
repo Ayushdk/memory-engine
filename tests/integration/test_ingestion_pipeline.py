@@ -11,8 +11,11 @@ from app.engine.classifier.memory_classifier import RuleClassifier
 from app.engine.orchestrator.ingestion_pipeline import IngestionPipeline
 from app.engine.router.storage_router import RuleStorageRouter
 from app.engine.scorer.importance_scorer import RuleImportanceScorer
+from app.engine.working_memory.persistence import PersistentWorkingMemory
 from app.engine.working_memory.working_memory_manager import WorkingMemoryManager
 from app.memory.repositories.memory_repository import MemoryRepository
+from app.memory.repositories.session_repository import SessionRepository
+from app.memory.repositories.working_memory_repository import WorkingMemoryRepository
 from app.models.enums import ClassifierAction, MemoryCategory, MemoryStatus, MemoryView
 
 FLASK_MSG = "We'll use Flask for the backend."
@@ -34,7 +37,11 @@ class FakeEmbedder:
 @pytest.fixture
 def pipeline(db_conn, vector_store):
     return IngestionPipeline(
-        working_memory=WorkingMemoryManager(capacity=5),
+        working_memory=PersistentWorkingMemory(
+            WorkingMemoryManager(capacity=5),
+            WorkingMemoryRepository(db_conn),
+            SessionRepository(db_conn),
+        ),
         classifier=RuleClassifier(),
         scorer=RuleImportanceScorer(),
         router=RuleStorageRouter(),
