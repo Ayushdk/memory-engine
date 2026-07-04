@@ -15,6 +15,11 @@ class Settings(BaseSettings):
     port: int = 8000
     log_level: str = "INFO"
 
+    # Client security: token unset = auth disabled (local dev); origins empty = CORS deny-all.
+    # The extension sets OPENMEMORY_API_TOKEN + OPENMEMORY_CORS_ORIGINS='["chrome-extension://<id>"]'.
+    api_token: str | None = None
+    cors_origins: list[str] = []
+
     # Strategy selection (architecture.md §4): rules is the only V1 implementation.
     classifier_strategy: Literal["rules", "ollama", "gemini"] = "rules"
     scorer_strategy: Literal["rules", "ollama", "gemini"] = "rules"

@@ -1,9 +1,11 @@
 """FastAPI app factory. Transport layer only — all logic lives in app.engine."""
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.error_handlers import register_error_handlers
 from app.api.routes import context_routes, health_routes, memory_routes
+from app.api.security import require_token
 from app.core.config import get_settings
 from app.core.lifecycle import lifespan
 from app.core.logging import setup_logging
@@ -16,9 +18,18 @@ def create_app() -> FastAPI:
     setup_logging(settings.log_level)
 
     app = FastAPI(title=settings.app_name, version=settings.version, lifespan=lifespan)
+    if settings.cors_origins:
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=settings.cors_origins,
+            allow_methods=["*"],
+            allow_headers=["Authorization", "Content-Type"],
+        )
+    # /health stays tokenless so clients can show connection status pre-auth.
     app.include_router(health_routes.router, prefix=API_PREFIX)
-    app.include_router(memory_routes.router, prefix=API_PREFIX)
-    app.include_router(context_routes.router, prefix=API_PREFIX)
+    guarded = [Depends(require_token)]
+    app.include_router(memory_routes.router, prefix=API_PREFIX, dependencies=guarded)
+    app.include_router(context_routes.router, prefix=API_PREFIX, dependencies=guarded)
     register_error_handlers(app)
     return app
 

@@ -17,4 +17,6 @@ def context(
     request: ContextRequest,
     pipeline: Annotated[ContextPipeline, Depends(get_context_pipeline)],
 ) -> ContextPack:
-    return pipeline.build_context(**request.model_dump())
+    if request.mode == "sync":
+        return pipeline.build_sync_context(request.session_id, request.project_id)
+    return pipeline.build_context(request.session_id, request.query, request.project_id)

@@ -57,3 +57,20 @@ class RetrievalEngine:
             retrieved_memories=memories,
             retrieval_metadata={"similarities": similarities, "requested_top_k": top_k},
         )
+
+    def retrieve_for_sync(self, project_id: str | None = None) -> RetrievalResult:
+        """Query-less candidates for Sync Context: every active memory (project-
+        scoped when given), straight from the source of truth. No embeddings —
+        with no query there is no similarity signal, so the ranking engine falls
+        back to importance + recency + access frequency.
+
+        ponytail: unbounded SQLite scan; add a LIMIT if a single-user local
+        store ever grows past the point where this matters.
+        """
+        memories = self._repository.list(project_id=project_id)  # status=active default
+        return RetrievalResult(
+            query_embedding=[],
+            candidate_memory_ids=[m.id for m in memories],
+            retrieved_memories=memories,
+            retrieval_metadata={"similarities": {}, "mode": "sync"},
+        )
