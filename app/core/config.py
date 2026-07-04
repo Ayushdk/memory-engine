@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="OPENMEMORY_", env_file=".env", extra="ignore")
 
     app_name: str = "OpenMemory Engine"
-    version: str = "0.1.0"
+    version: str = "0.2.0"
     host: str = "127.0.0.1"
     port: int = 8000
     log_level: str = "INFO"
