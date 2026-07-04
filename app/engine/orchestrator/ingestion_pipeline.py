@@ -19,6 +19,7 @@ from app.memory.vector.chroma_client import ChromaVectorStore, active_where
 from app.models.domain.memory import Memory, Source
 from app.models.enums import ClassifierAction, Confidence, MemoryStatus
 from app.services.embedding_service import EmbeddingService
+from app.utils.text import summarize
 
 SyncStatus = Literal["skipped", "in_sync", "sqlite_only", "failed"]
 
@@ -108,6 +109,7 @@ class IngestionPipeline:
 
         memory = Memory(
             content=content,
+            summary=summarize(content),
             category=classification.category,
             view=routing.view,
             project_id=project_id,

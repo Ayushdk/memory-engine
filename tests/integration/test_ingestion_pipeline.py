@@ -148,6 +148,16 @@ def test_delete_and_merge_commands_are_not_stored(pipeline, db_conn):
     assert MemoryRepository(db_conn).list(status=None) == []
 
 
+def test_summary_heuristic(pipeline, db_conn):
+    repo = MemoryRepository(db_conn)
+
+    multi = ingest(pipeline, "We decided to use Chroma. It runs embedded and needs no server.")
+    assert repo.get(multi.memory_id).summary == "We decided to use Chroma."
+
+    single = ingest(pipeline, FLASK_MSG)  # one short sentence: no summary gain
+    assert repo.get(single.memory_id).summary is None
+
+
 def test_result_carries_full_trace(pipeline):
     result = ingest(pipeline, FLASK_MSG)
     assert result.classification.matched_rule == "decision"
