@@ -113,6 +113,15 @@ def test_clear_removes_snapshot_too(repos):
     assert make_wm(repos).get_messages("s1") == []  # restart confirms deletion
 
 
+def test_title_is_sticky_like_project(repos):
+    wm = make_wm(repos)
+    wm.add_message("s1", "user", "a", platform="chatgpt", title="Designing OpenMemory")
+    wm.add_message("s1", "user", "b", platform="chatgpt")  # no title passed
+
+    session = repos[1].get("s1")
+    assert session.title == "Designing OpenMemory"
+
+
 def test_project_id_upgrade_but_never_downgrade(repos):
     wm = make_wm(repos)
     wm.add_message("s1", "user", "no project yet", platform="chatgpt")

@@ -62,6 +62,7 @@ class IngestionPipeline:
         role: Literal["user", "assistant"],
         content: str,
         project_id: str | None = None,
+        title: str | None = None,
     ) -> IngestionResult:
         # Classify first so the buffered message carries its classification —
         # the session recap reuses this instead of ever re-classifying.
@@ -74,6 +75,7 @@ class IngestionPipeline:
             content,
             platform=platform,
             project_id=project_id,
+            title=title,
             action=classification.action.value,
             matched_rule=classification.matched_rule,
         )

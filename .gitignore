@@ -1,13 +1,58 @@
+# === Python ===
 __pycache__/
 *.py[cod]
 .pytest_cache/
 .ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
 .venv/
 venv/
+
+# === Node (extension) ===
+node_modules/
+coverage/
+extension/dist/
+extension/build/
+
+# === Environment / secrets ===
 .env
+
+# === Runtime data (rebuildable; keep the README placeholders) ===
 data/sqlite/*
 data/chroma/*
 data/backups/*
 data/exports/*
 !data/**/README.md
 
+# === Local tool state ===
+.tokensave/*.db
+.tokensave/*.db-shm
+.tokensave/*.db-wal
+.tokensave/sync.lock
+
+# === IDE ===
+.vscode/
+.idea/
+
+# === OS ===
+.DS_Store
+Thumbs.db
+
+# === Logs & temp ===
+*.log
+*.tmp
+tmp/
+*.egg-info/
+.eggs/
+
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+.history/
+
+Desktop.ini
+
+.pyright/

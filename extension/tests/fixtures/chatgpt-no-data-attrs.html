@@ -1,0 +1,15 @@
+<!-- Simulated redesign: data-message-* attributes gone, but conversation-turn
+     articles remain. The fallback strategy must still extract. -->
+<main>
+  <div id="thread">
+    <article data-testid="conversation-turn-1">
+      <div class="whitespace-pre-wrap">Remind me what we picked for storage?</div>
+    </article>
+    <article data-testid="conversation-turn-2">
+      <div class="markdown prose"><p>You chose SQLite with a Chroma index.</p></div>
+    </article>
+  </div>
+  <form>
+    <textarea data-testid="prompt-textarea" placeholder="Message ChatGPT"></textarea>
+  </form>
+</main>

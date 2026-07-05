@@ -1,0 +1,15 @@
+{
+  "name": "openmemory-extension",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "OpenMemory browser extension — local memory for every AI assistant.",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "jsdom": "^24.0.0",
+    "vitest": "^1.6.0"
+  }
+}

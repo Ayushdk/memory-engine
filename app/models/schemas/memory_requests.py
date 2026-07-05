@@ -11,3 +11,5 @@ class IngestRequest(BaseModel):
     role: Literal["user", "assistant"]
     content: str = Field(min_length=1)
     project_id: str | None = None
+    # Lightweight session metadata (e.g. the conversation title); optional.
+    title: str | None = None

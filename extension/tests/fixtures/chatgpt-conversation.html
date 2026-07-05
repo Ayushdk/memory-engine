@@ -1,0 +1,53 @@
+<!-- Captured approximation of chatgpt.com conversation markup (2026-07).
+     Structure: article turns wrapping [data-message-author-role] nodes;
+     user text in .whitespace-pre-wrap, assistant text in .markdown;
+     contenteditable composer with id prompt-textarea. -->
+<main>
+  <div id="thread">
+    <article data-testid="conversation-turn-1" data-turn-id="t1">
+      <div data-message-author-role="user" data-message-id="msg-user-001">
+        <div class="flex">
+          <div class="whitespace-pre-wrap">We decided to use SQLite as the source of truth.</div>
+        </div>
+      </div>
+      <div class="turn-actions"><button aria-label="Copy">Copy</button></div>
+    </article>
+
+    <article data-testid="conversation-turn-2" data-turn-id="t2">
+      <div data-message-author-role="assistant" data-message-id="msg-asst-002">
+        <div class="markdown prose">
+          <p>Good call. SQLite gives you a single durable store,</p>
+          <p>and the vector index can always be rebuilt.</p>
+          <pre><code>reset_db.py</code></pre>
+        </div>
+      </div>
+      <div class="turn-actions"><button aria-label="Copy">Copy</button></div>
+    </article>
+
+    <article data-testid="conversation-turn-3" data-turn-id="t3">
+      <div data-message-author-role="user" data-message-id="msg-user-003">
+        <div class="whitespace-pre-wrap">The tricky part is
+the retrieval endpoint design.</div>
+      </div>
+    </article>
+
+    <!-- system/tool turns must be ignored -->
+    <article data-testid="conversation-turn-4" data-turn-id="t4">
+      <div data-message-author-role="system" data-message-id="msg-sys-004">
+        <div class="whitespace-pre-wrap">internal system note</div>
+      </div>
+    </article>
+
+    <!-- empty streaming placeholder must be ignored -->
+    <article data-testid="conversation-turn-5" data-turn-id="t5">
+      <div data-message-author-role="assistant" data-message-id="msg-asst-005">
+        <div class="markdown prose"></div>
+      </div>
+    </article>
+  </div>
+
+  <form>
+    <div id="prompt-textarea" contenteditable="true" data-testid="prompt-textarea"><p></p></div>
+    <button type="submit" aria-label="Send">Send</button>
+  </form>
+</main>

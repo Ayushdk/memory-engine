@@ -28,5 +28,6 @@ class Session(BaseModel):
     id: str = Field(min_length=1)
     platform: str = Field(min_length=1)
     project_id: str | None = None
+    title: str | None = None
     started_at: datetime = Field(default_factory=utc_now)
     last_activity_at: datetime = Field(default_factory=utc_now)

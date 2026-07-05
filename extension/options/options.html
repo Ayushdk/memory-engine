@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <link rel="stylesheet" href="../ui/common.css" />
+  <link rel="stylesheet" href="options.css" />
+  <title>OpenMemory — Settings</title>
+</head>
+<body>
+  <div class="page">
+    <header class="page-header">
+      <h1>OpenMemory settings</h1>
+      <p class="muted">
+        The engine runs locally on your machine. Nothing ever leaves it.
+      </p>
+    </header>
+
+    <section class="card form">
+      <div class="field">
+        <label for="engine-url">Engine URL</label>
+        <input class="input" id="engine-url" placeholder="http://127.0.0.1:8000" spellcheck="false" />
+      </div>
+      <div class="field">
+        <label for="api-token">API token</label>
+        <input class="input" id="api-token" type="password" placeholder="leave empty if auth is disabled" spellcheck="false" />
+        <p class="help muted">
+          Must match <span class="mono">OPENMEMORY_API_TOKEN</span> in the engine's
+          <span class="mono">.env</span>.
+        </p>
+      </div>
+
+      <div class="actions">
+        <button class="btn" id="test">Test connection</button>
+        <button class="btn btn-primary" id="save">Save</button>
+      </div>
+      <p class="result" id="result" hidden></p>
+    </section>
+  </div>
+  <script type="module" src="options.js"></script>
+</body>
+</html>

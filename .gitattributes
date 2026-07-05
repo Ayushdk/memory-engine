@@ -1,0 +1,33 @@
+# Line-ending policy: every text file is stored AND checked out with LF,
+# on Windows, WSL, and CI alike — no per-machine rewriting, no CRLF churn.
+
+* text=auto eol=lf
+
+# Source and config files — explicit for clarity
+*.py    text eol=lf
+*.js    text eol=lf
+*.mjs   text eol=lf
+*.json  text eol=lf
+*.html  text eol=lf
+*.css   text eol=lf
+*.md    text eol=lf
+*.yml   text eol=lf
+*.yaml  text eol=lf
+*.toml  text eol=lf
+*.txt   text eol=lf
+*.sh    text eol=lf
+
+# Windows scripts genuinely need CRLF
+*.bat   text eol=crlf
+*.cmd   text eol=crlf
+*.ps1   text eol=crlf
+
+# Binary — never touch
+*.png   binary
+*.jpg   binary
+*.ico   binary
+*.db    binary
+*.sqlite binary
+
+*.svg text eol=lf
+*.xml text eol=lf

@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <link rel="stylesheet" href="../ui/common.css" />
+  <link rel="stylesheet" href="popup.css" />
+  <title>OpenMemory</title>
+</head>
+<body>
+  <div class="popup">
+    <header class="header">
+      <div class="brand">
+        <svg class="logo" viewBox="0 0 32 32" aria-hidden="true">
+          <defs>
+            <linearGradient id="om-g" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="#6366f1" />
+              <stop offset="1" stop-color="#a855f7" />
+            </linearGradient>
+          </defs>
+          <rect x="1" y="1" width="30" height="30" rx="9" fill="url(#om-g)" />
+          <circle cx="16" cy="16" r="6.5" fill="none" stroke="#fff" stroke-width="2.1" />
+          <circle cx="16" cy="16" r="2" fill="#fff" />
+          <path d="M16 3.6v4M16 24.4v4M3.6 16h4M24.4 16h4" stroke="#fff" stroke-width="2.1"
+                stroke-linecap="round" opacity="0.85" />
+        </svg>
+        <div class="brand-text">
+          <span class="name">OpenMemory</span>
+          <span class="tagline muted">local memory engine</span>
+        </div>
+      </div>
+      <span class="pill" id="engine-pill">
+        <span class="dot" id="engine-dot"></span>
+        <span id="engine-label">Checking…</span>
+      </span>
+    </header>
+
+    <main class="main">
+      <div class="activity" id="activity">
+        <span class="activity-dot" id="activity-dot"></span>
+        <span id="activity-text">Checking…</span>
+      </div>
+
+      <button class="btn btn-primary btn-block btn-sync" id="sync" disabled>
+        <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true">
+          <path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9M13.5 1.5v3h-3" fill="none"
+                stroke="currentColor" stroke-width="1.7" stroke-linecap="round"
+                stroke-linejoin="round" />
+        </svg>
+        Sync Context
+      </button>
+      <p class="hint muted" id="sync-hint">Carry this work into any AI assistant.</p>
+
+      <section class="card context">
+        <div class="row">
+          <span class="row-label">Platform</span>
+          <span class="row-value" id="platform">—</span>
+        </div>
+        <div class="row">
+          <span class="row-label">Session</span>
+          <span class="row-value mono" id="session" title="">—</span>
+        </div>
+        <div class="row row-project">
+          <span class="row-label">Project</span>
+          <input class="input input-inline" id="project" placeholder="none" spellcheck="false" />
+        </div>
+      </section>
+
+      <section class="stats">
+        <div class="card stat">
+          <span class="stat-value" id="stat-ingested">0</span>
+          <span class="stat-label">remembered</span>
+        </div>
+        <div class="card stat">
+          <span class="stat-value" id="stat-sync">never</span>
+          <span class="stat-label">last sync</span>
+        </div>
+      </section>
+
+      <label class="capture card">
+        <div>
+          <span class="capture-title">Memory capture</span>
+          <span class="capture-sub muted" id="capture-sub">Remembering this conversation</span>
+        </div>
+        <span class="switch">
+          <input type="checkbox" id="capture-toggle" checked />
+          <span class="track"></span>
+        </span>
+      </label>
+
+      <details class="debug">
+        <summary class="muted">Debug</summary>
+        <dl class="debug-grid mono">
+          <dt>Engine</dt><dd id="dbg-engine">—</dd>
+          <dt>Version</dt><dd id="dbg-version">—</dd>
+          <dt>Session</dt><dd id="dbg-session">—</dd>
+          <dt>Project</dt><dd id="dbg-project">—</dd>
+          <dt>Ingested</dt><dd id="dbg-ingested">—</dd>
+          <dt>Last sync</dt><dd id="dbg-sync">—</dd>
+        </dl>
+      </details>
+    </main>
+
+    <footer class="footer">
+      <button class="btn btn-ghost" id="dashboard" disabled title="Coming with the dashboard milestone">
+        Dashboard
+      </button>
+      <button class="btn btn-ghost" id="settings">Settings</button>
+    </footer>
+  </div>
+  <script type="module" src="popup.js"></script>
+</body>
+</html>

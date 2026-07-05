@@ -1,0 +1,115 @@
+/**
+ * Service-worker message handling, extracted from the chrome.* glue so it
+ * unit-tests with fakes. The worker is the ONLY component that talks to the
+ * engine — popup, options, and content scripts all message through here.
+ */
+
+import { EngineClient } from "../lib/engine-client.js";
+import { loadSettings, saveSettings } from "../lib/settings.js";
+
+export const DEFAULT_STATS = {
+  ingested: 0,
+  lastSyncAt: null,
+  lastMemoryAt: null,
+  lastError: null,
+  lastErrorAt: null,
+};
+
+export function createCore({
+  local, // chrome.storage.local (settings)
+  session, // chrome.storage.session (volatile stats)
+  clientFactory = (options) => new EngineClient(options),
+}) {
+  async function getClient(overrides = {}) {
+    const settings = await loadSettings(local);
+    return clientFactory({
+      baseUrl: overrides.engineUrl ?? settings.engineUrl,
+      token: (overrides.apiToken ?? settings.apiToken) || null,
+    });
+  }
+
+  async function getStats() {
+    const stored = await session.get(Object.keys(DEFAULT_STATS));
+    return { ...DEFAULT_STATS, ...stored };
+  }
+
+  async function probeEngine(overrides = {}) {
+    try {
+      const health = await (await getClient(overrides)).health();
+      return { connected: true, version: health.version ?? null };
+    } catch (error) {
+      return { connected: false, version: null, reason: error.message };
+    }
+  }
+
+  const handlers = {
+    /** Everything the popup needs to render, in one round trip. */
+    async status() {
+      const [settings, stats, engine] = await Promise.all([
+        loadSettings(local),
+        getStats(),
+        probeEngine(),
+      ]);
+      return { settings, stats, engine };
+    },
+
+    /** Patch settings (popup: project/paused; options: url/token). */
+    async "set-settings"({ patch }) {
+      const applied = await saveSettings(local, patch ?? {});
+      return { ok: true, applied };
+    },
+
+    /** Options page "Test connection" — probes explicit values, saves nothing. */
+    async "test-connection"({ engineUrl, apiToken }) {
+      return probeEngine({ engineUrl, apiToken });
+    },
+
+    /**
+     * Content-script ingest. Pause is enforced HERE (single authority), so
+     * a stale content script can never ingest past the toggle.
+     */
+    async ingest({ payload }) {
+      const settings = await loadSettings(local);
+      if (settings.paused) return { ok: false, skipped: "paused" };
+      try {
+        const result = await (await getClient()).ingest({
+          ...payload,
+          projectId: settings.projectId || null,
+        });
+        const patch = { ingested: (await getStats()).ingested + 1, lastError: null };
+        if (result.action === "store" || result.action === "update") {
+          patch.lastMemoryAt = new Date().toISOString();
+        }
+        await session.set(patch);
+        return { ok: true, action: result.action, memoryId: result.memory_id ?? null };
+      } catch (error) {
+        await session.set({
+          lastError: error.message,
+          lastErrorAt: new Date().toISOString(),
+        });
+        return { ok: false, error: error.message };
+      }
+    },
+
+    /** Adapter selectors broke: surface it via the activity indicator. */
+    async "adapter-broken"({ platform }) {
+      await session.set({
+        lastError: `${platform} page structure changed — memories paused until the adapter is updated`,
+        lastErrorAt: new Date().toISOString(),
+      });
+      return { ok: true };
+    },
+  };
+
+  return {
+    async handle(message) {
+      const handler = handlers[message?.type];
+      if (!handler) return { error: `unknown message type: ${message?.type}` };
+      try {
+        return await handler(message);
+      } catch (error) {
+        return { error: error.message };
+      }
+    },
+  };
+}

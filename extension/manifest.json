@@ -1,0 +1,30 @@
+{
+  "manifest_version": 3,
+  "name": "OpenMemory",
+  "version": "0.1.0",
+  "description": "Local-first memory for every AI assistant. Your conversations become persistent, private memory on your own machine.",
+  "permissions": ["storage", "tabs"],
+  "host_permissions": ["http://127.0.0.1/*", "http://localhost/*"],
+  "background": {
+    "service_worker": "background/service-worker.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://chatgpt.com/*", "https://chat.openai.com/*"],
+      "js": ["content/bootstrap.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["content/*.js", "content/adapters/*.js", "lib/*.js"],
+      "matches": ["https://chatgpt.com/*", "https://chat.openai.com/*"]
+    }
+  ],
+  "action": {
+    "default_title": "OpenMemory",
+    "default_popup": "popup/popup.html"
+  },
+  "options_page": "options/options.html"
+}

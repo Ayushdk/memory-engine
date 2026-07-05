@@ -36,6 +36,7 @@ CREATE TABLE IF NOT EXISTS sessions (
     id               TEXT PRIMARY KEY,
     platform         TEXT NOT NULL,
     project_id       TEXT,
+    title            TEXT,
     started_at       TEXT NOT NULL,
     last_activity_at TEXT
 );
