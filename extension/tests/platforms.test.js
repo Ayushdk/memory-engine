@@ -23,6 +23,20 @@ describe("detectPlatform", () => {
     });
   });
 
+  it("detects a Claude conversation and derives the session id", () => {
+    expect(detectPlatform("https://claude.ai/chat/9f8e7d6c-5b4a-3c2d-1e0f-abc123def456")).toEqual({
+      platform: "claude",
+      label: "Claude",
+      sessionId: "claude-9f8e7d6c-5b4a-3c2d-1e0f-abc123def456",
+    });
+  });
+
+  it("returns null sessionId on Claude pages without a conversation", () => {
+    expect(detectPlatform("https://claude.ai/new").sessionId).toBeNull();
+    expect(detectPlatform("https://claude.ai/").sessionId).toBeNull();
+    expect(detectPlatform("https://claude.ai/").platform).toBe("claude");
+  });
+
   it("returns null for unsupported sites and bad URLs", () => {
     expect(detectPlatform("https://example.com/c/123")).toBeNull();
     expect(detectPlatform("not a url")).toBeNull();

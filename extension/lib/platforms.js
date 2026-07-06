@@ -16,6 +16,16 @@ const PLATFORMS = [
       return match ? `chatgpt-${match[1]}` : null;
     },
   },
+  {
+    id: "claude",
+    label: "Claude",
+    hosts: ["claude.ai"],
+    // claude.ai/chat/<conversation-uuid>
+    sessionFromPath: (pathname) => {
+      const match = pathname.match(/^\/chat\/([A-Za-z0-9-]+)/);
+      return match ? `claude-${match[1]}` : null;
+    },
+  },
 ];
 
 /**

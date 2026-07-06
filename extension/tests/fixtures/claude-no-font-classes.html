@@ -1,0 +1,14 @@
+<!-- Hypothetical restyle: font-* classes renamed, but turn wrappers and the
+     user-message testid survive. Fallback strategy territory. -->
+<main>
+  <div data-test-render-count="3">
+    <div data-testid="user-message"><p>Remind me what we picked for storage?</p></div>
+  </div>
+  <div data-test-render-count="3">
+    <div class="response-body"><p>You chose SQLite with a Chroma index.</p></div>
+  </div>
+
+  <form>
+    <textarea placeholder="Reply to Claude..."></textarea>
+  </form>
+</main>

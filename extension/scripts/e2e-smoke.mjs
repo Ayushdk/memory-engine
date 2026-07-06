@@ -8,8 +8,9 @@
  *
  *   1. connect to the running engine
  *   2. open a ChatGPT conversation → messages auto-ingest (exactly once)
- *   3. open a FRESH conversation → click Sync Context
- *   4. the pack lands in the composer, typed draft preserved, nothing submitted
+ *   3. open a fresh CLAUDE conversation → click Sync Context
+ *   4. the pack lands in Claude's composer, typed draft preserved, nothing
+ *      submitted — ChatGPT → Claude continuity, the core OpenMemory promise
  *
  * Run from extension/ with the engine on 127.0.0.1:8000:
  *   node scripts/e2e-smoke.mjs        (Windows node when the engine runs on Windows)
@@ -25,6 +26,7 @@ import { JSDOM } from "jsdom";
 
 import { createCore } from "../background/worker-core.js";
 import * as chatgpt from "../content/adapters/chatgpt.js";
+import * as claude from "../content/adapters/claude.js";
 import { injectIntoComposer } from "../content/injector.js";
 import { createScanner, createSeenStore } from "../content/observer.js";
 import { detectPlatform } from "../lib/platforms.js";
@@ -82,19 +84,19 @@ const again = await scanner.scan({}, conversationUrl);
 assert.equal(again.sent, 0, "re-scan must not re-ingest");
 ok("re-scan ingested 0 — exactly-once holds against the live engine");
 
-step("3. Fresh conversation → Sync Context");
-const freshUrl = `https://chatgpt.com/c/${randomUUID()}`;
-const pageB = new JSDOM(fixture("chatgpt-conversation.html"), { url: freshUrl });
+step("3. Fresh CLAUDE conversation → Sync Context (cross-platform handoff)");
+const freshUrl = `https://claude.ai/chat/${randomUUID()}`;
+const pageB = new JSDOM(fixture("claude-home.html"), { url: freshUrl });
 const docB = pageB.window.document;
 // injector dispatches DOM events; give it this page's constructors
 globalThis.Event = pageB.window.Event;
 globalThis.InputEvent = pageB.window.InputEvent;
 
-const composerEl = docB.getElementById("prompt-textarea");
+const composerEl = claude.getComposer(docB).element;
 composerEl.textContent = "and what should I do next?"; // a half-typed draft
 let submitted = false;
 docB.querySelector("form").addEventListener("submit", () => (submitted = true));
-activeTab = (message) => injectIntoComposer(chatgpt.getComposer(docB), message.text);
+activeTab = (message) => injectIntoComposer(claude.getComposer(docB), message.text);
 
 const sync = await core.handle({
   type: "sync",

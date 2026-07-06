@@ -1,14 +1,19 @@
 /**
- * ChatGPT content entry: wires the scanner to the live page.
+ * Content entry: wires the scanner to the live page, adapter picked by host.
  * Debounced MutationObserver — streaming responses mutate continuously, so a
  * scan only fires after the DOM has been quiet for a moment (streams settle
  * before their message is ingested, preventing partial-content memories).
  */
 
 import { detectPlatform } from "../lib/platforms.js";
-import * as adapter from "./adapters/chatgpt.js";
+import * as chatgpt from "./adapters/chatgpt.js";
+import * as claude from "./adapters/claude.js";
 import { injectIntoComposer } from "./injector.js";
 import { createScanner, createSeenStore } from "./observer.js";
+
+const ADAPTERS = { chatgpt, claude };
+const adapter = ADAPTERS[detectPlatform(location.href)?.platform];
+if (!adapter) throw new Error(`[OpenMemory] no adapter for ${location.hostname}`);
 
 const DEBOUNCE_MS = 1500;
 

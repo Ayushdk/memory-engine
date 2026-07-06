@@ -1,0 +1,39 @@
+<!-- Snapshot of claude.ai conversation structure (2026-07).
+     Structure: [data-test-render-count] turn wrappers; user text in
+     .font-user-message (also data-testid="user-message"), assistant text in
+     .font-claude-message; action buttons OUTSIDE the message body;
+     ProseMirror contenteditable composer with data-testid="chat-input". -->
+<main>
+  <div data-test-render-count="1">
+    <div data-testid="user-message" class="font-user-message">
+      <p>We decided to use SQLite as the source of truth.</p>
+    </div>
+  </div>
+
+  <div data-test-render-count="1">
+    <div class="font-claude-message">
+      <p>SQLite gives you a single durable store, with the vector index rebuilt on demand.</p>
+      <pre><code>python reset_db.py</code></pre>
+    </div>
+    <div class="actions">
+      <button aria-label="Copy">Copy</button>
+      <button aria-label="Retry">Retry</button>
+    </div>
+  </div>
+
+  <div data-test-render-count="1">
+    <div data-testid="user-message" class="font-user-message"><p>The tricky part is
+the retrieval endpoint design.</p></div>
+  </div>
+
+  <!-- streaming placeholder: an assistant turn with no text yet -->
+  <div data-test-render-count="1">
+    <div class="font-claude-message"></div>
+  </div>
+
+  <form>
+    <div class="ProseMirror" contenteditable="true" data-testid="chat-input"
+         aria-label="Write your prompt to Claude"><p></p></div>
+    <button type="submit" aria-label="Send message">Send</button>
+  </form>
+</main>

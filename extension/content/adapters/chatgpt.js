@@ -8,6 +8,8 @@
  * quietly remembering nothing.
  */
 
+import { composerFrom, normalizeText } from "./shared.js";
+
 export const ADAPTER_INFO = { platform: "chatgpt", adapterVersion: "1.0" };
 
 const ROLES = new Set(["user", "assistant"]);
@@ -18,11 +20,7 @@ function textOf(element) {
     element.querySelector(".markdown") ??
     element.querySelector(".whitespace-pre-wrap") ??
     element;
-  return (contentNode.textContent ?? "")
-    .replace(/ /g, " ")
-    .replace(/[ \t]+\n/g, "\n")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
+  return normalizeText(contentNode);
 }
 
 const STRATEGIES = [
@@ -109,21 +107,10 @@ export function adapterHealth(root = document) {
  * @returns {{element: Element, kind: "contenteditable"|"textarea"} | null}
  */
 export function getComposer(root = document) {
-  const candidates = [
+  return composerFrom([
     root.querySelector("#prompt-textarea"),
     root.querySelector('[data-testid="prompt-textarea"]'),
-    root.querySelector('form textarea'),
+    root.querySelector("form textarea"),
     root.querySelector('form [contenteditable="true"]'),
-  ];
-  for (const element of candidates) {
-    if (!element) continue;
-    const kind =
-      element.tagName === "TEXTAREA"
-        ? "textarea"
-        : element.getAttribute("contenteditable") === "true"
-          ? "contenteditable"
-          : null;
-    if (kind) return { element, kind };
-  }
-  return null;
+  ]);
 }
