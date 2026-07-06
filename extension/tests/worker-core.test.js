@@ -220,3 +220,72 @@ describe("adapter-broken message", () => {
     expect(session.data.lastError).toContain("chatgpt page structure changed");
   });
 });
+
+describe("sync message", () => {
+  const PACK = {
+    sections: { profile: ["Prefers TypeScript"] },
+  };
+
+  function syncCore({ pack = PACK, tabReply = { ok: true }, session = fakeArea() } = {}) {
+    const sentToTab = [];
+    const core = createCore({
+      local: fakeArea({ projectId: "proj_x" }),
+      session,
+      clientFactory: () => ({
+        async getSyncContext(args) {
+          syncCore.lastArgs = args;
+          if (pack instanceof Error) throw pack;
+          return pack;
+        },
+      }),
+      sendToTab: async (tabId, message) => {
+        sentToTab.push({ tabId, message });
+        if (tabReply instanceof Error) throw tabReply;
+        return tabReply;
+      },
+    });
+    return { core, sentToTab, session };
+  }
+
+  const message = { type: "sync", sessionId: "chatgpt-abc", tabId: 42 };
+
+  it("fetches the pack, injects the rendered text, records lastSyncAt", async () => {
+    const { core, sentToTab, session } = syncCore();
+    expect(await core.handle(message)).toEqual({ ok: true });
+    expect(syncCore.lastArgs).toEqual({ sessionId: "chatgpt-abc", projectId: "proj_x" });
+    expect(sentToTab).toHaveLength(1);
+    expect(sentToTab[0].tabId).toBe(42);
+    expect(sentToTab[0].message.type).toBe("inject-context");
+    expect(sentToTab[0].message.text).toContain("Prefers TypeScript");
+    expect(session.data.lastSyncAt).toBeTruthy();
+  });
+
+  it("empty pack → friendly error, nothing sent to the tab", async () => {
+    const { core, sentToTab, session } = syncCore({ pack: { sections: {} } });
+    expect(await core.handle(message)).toEqual({ ok: false, error: "No memories to sync yet" });
+    expect(sentToTab).toHaveLength(0);
+    expect(session.data.lastSyncAt).toBeUndefined();
+  });
+
+  it("engine failure → ok:false with the error, no lastSyncAt", async () => {
+    const { core, session } = syncCore({ pack: new Error("ECONNREFUSED") });
+    expect(await core.handle(message)).toEqual({ ok: false, error: "ECONNREFUSED" });
+    expect(session.data.lastSyncAt).toBeUndefined();
+  });
+
+  it("injection failure reported by the content script is surfaced", async () => {
+    const { core, session } = syncCore({
+      tabReply: { ok: false, error: "couldn't find the message box on this page" },
+    });
+    const reply = await core.handle(message);
+    expect(reply).toEqual({ ok: false, error: "couldn't find the message box on this page" });
+    expect(session.data.lastSyncAt).toBeUndefined();
+  });
+
+  it("unreachable content script (no receiver) → reload hint", async () => {
+    const { core } = syncCore({ tabReply: new Error("no receiving end") });
+    const reply = await core.handle(message);
+    expect(reply.ok).toBe(false);
+    expect(reply.error).toContain("reloading");
+  });
+});

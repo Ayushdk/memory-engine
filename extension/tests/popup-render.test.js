@@ -142,3 +142,36 @@ describe("helpers", () => {
     expect(formatLastSync("2026-07-03T09:00:00Z", now)).toBe("2d ago");
   });
 });
+
+describe("sync button", () => {
+  const chat = { platform: "chatgpt", label: "ChatGPT", sessionId: "chatgpt-abc" };
+  const sync = () => document.getElementById("sync");
+
+  it("enabled with a connected engine and an open conversation", () => {
+    render(document, state({ tab: chat }));
+    expect(sync().disabled).toBe(false);
+    expect(text("sync-hint")).toBe("Carry this work into any AI assistant.");
+  });
+
+  it("disabled when the engine is offline", () => {
+    render(document, state({ engine: { connected: false, version: null }, tab: chat }));
+    expect(sync().disabled).toBe(true);
+    expect(text("sync-hint")).toBe("Connect the engine to sync.");
+  });
+
+  it("disabled without an open conversation", () => {
+    render(document, state({ tab: { ...chat, sessionId: null } }));
+    expect(sync().disabled).toBe(true);
+    expect(text("sync-hint")).toBe("Open an AI conversation to sync into.");
+
+    render(document, state({ tab: null }));
+    expect(sync().disabled).toBe(true);
+  });
+
+  it("re-render resets stale sync feedback styling", () => {
+    const hint = document.getElementById("sync-hint");
+    hint.className = "hint ok";
+    render(document, state({ tab: chat }));
+    expect(hint.className).toBe("hint muted");
+  });
+});

@@ -173,6 +173,14 @@ body {
   font-size: 11px;
   text-align: center;
 }
+.hint.ok {
+  color: var(--success);
+  font-weight: 600;
+}
+.hint.err {
+  color: var(--danger);
+  font-weight: 600;
+}
 
 /* Capture toggle */
 .capture {

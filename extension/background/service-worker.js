@@ -5,6 +5,7 @@ import { createCore } from "./worker-core.js";
 const core = createCore({
   local: chrome.storage.local,
   session: chrome.storage.session,
+  sendToTab: (tabId, message) => chrome.tabs.sendMessage(tabId, message),
 });
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {

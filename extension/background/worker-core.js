@@ -5,6 +5,7 @@
  */
 
 import { EngineClient } from "../lib/engine-client.js";
+import { renderPack } from "../lib/pack-renderer.js";
 import { loadSettings, saveSettings } from "../lib/settings.js";
 
 export const DEFAULT_STATS = {
@@ -19,6 +20,7 @@ export function createCore({
   local, // chrome.storage.local (settings)
   session, // chrome.storage.session (volatile stats)
   clientFactory = (options) => new EngineClient(options),
+  sendToTab, // (tabId, message) => Promise<reply> — chrome.tabs.sendMessage
 }) {
   async function getClient(overrides = {}) {
     const settings = await loadSettings(local);
@@ -87,6 +89,37 @@ export function createCore({
           lastError: error.message,
           lastErrorAt: new Date().toISOString(),
         });
+        return { ok: false, error: error.message };
+      }
+    },
+
+    /**
+     * Popup Sync button: fetch the Sync Context Pack, render it, and hand it
+     * to the content script for composer injection. Never auto-submits — the
+     * content side only edits the composer.
+     */
+    async sync({ sessionId, tabId }) {
+      const settings = await loadSettings(local);
+      try {
+        const pack = await (await getClient()).getSyncContext({
+          sessionId,
+          projectId: settings.projectId || null,
+        });
+        const text = renderPack(pack);
+        if (!text) return { ok: false, error: "No memories to sync yet" };
+
+        let reply;
+        try {
+          reply = await sendToTab(tabId, { type: "inject-context", text });
+        } catch {
+          reply = null; // no content script in the tab (e.g. needs a reload)
+        }
+        if (!reply?.ok) {
+          return { ok: false, error: reply?.error ?? "Couldn't reach the page — try reloading it" };
+        }
+        await session.set({ lastSyncAt: new Date().toISOString() });
+        return { ok: true };
+      } catch (error) {
         return { ok: false, error: error.message };
       }
     },

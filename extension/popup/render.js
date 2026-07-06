@@ -22,6 +22,16 @@ export function render(doc, state) {
   $("activity-dot").className = `activity-dot ${activity.kind}`.trim();
   $("activity-text").textContent = activity.text;
 
+  // Sync button — needs a live engine and an open conversation
+  $("sync").disabled = !engine.connected || !tab?.sessionId;
+  const hint = $("sync-hint");
+  hint.className = "hint muted";
+  hint.textContent = !engine.connected
+    ? "Connect the engine to sync."
+    : tab?.sessionId
+      ? "Carry this work into any AI assistant."
+      : "Open an AI conversation to sync into.";
+
   // Context card
   $("platform").textContent = tab ? tab.label : "Not an AI chat";
   const session = $("session");

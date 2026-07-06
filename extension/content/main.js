@@ -7,6 +7,7 @@
 
 import { detectPlatform } from "../lib/platforms.js";
 import * as adapter from "./adapters/chatgpt.js";
+import { injectIntoComposer } from "./injector.js";
 import { createScanner, createSeenStore } from "./observer.js";
 
 const DEBOUNCE_MS = 1500;
@@ -28,6 +29,13 @@ function scheduleScan() {
     });
   }, DEBOUNCE_MS);
 }
+
+// Sync: the worker sends the rendered pack here for composer injection.
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  if (message?.type !== "inject-context") return undefined;
+  sendResponse(injectIntoComposer(adapter.getComposer(), message.text));
+  return undefined; // response was synchronous
+});
 
 new MutationObserver(scheduleScan).observe(document.body, {
   childList: true,
