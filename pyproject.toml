@@ -12,6 +12,8 @@ dependencies = [
   "chromadb",
   "sentence-transformers",
   "loguru",
+  "httpx",
+  "jsonschema",
 ]
 
 [dependency-groups]
@@ -24,6 +26,7 @@ dev = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+asyncio_mode = "auto"
 
 [tool.ruff]
 line-length = 100

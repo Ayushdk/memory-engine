@@ -82,7 +82,10 @@ def test_top_k():
 
 
 def test_deterministic_ordering_on_ties():
-    a, b, c = (fresh(content=x) for x in "abc")
+    # One shared timestamp: per-call utc_now() differs by microseconds, which
+    # unties recency and lets creation order (not ULID) decide — flaky.
+    now = utc_now()
+    a, b, c = (fresh(content=x, created_at=now, updated_at=now) for x in "abc")
     sims = {m.id: 0.5 for m in (a, b, c)}
     first = engine.rank(retrieval_of([b, c, a], sims)).selected_memory_ids
     second = engine.rank(retrieval_of([c, a, b], sims)).selected_memory_ids

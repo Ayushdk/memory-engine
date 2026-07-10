@@ -26,6 +26,15 @@ class Settings(BaseSettings):
 
     embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
 
+    # Intelligence layer (intelligence-layer.md §8). "none" → intelligence
+    # features no-op and the engine keeps V1 heuristic behavior. Different
+    # models for different jobs: a light summarizer, a heavy reasoner.
+    llm_provider: Literal["none", "ollama"] = "none"
+    ollama_url: str = "http://127.0.0.1:11434"
+    ollama_summarizer_model: str = "qwen2.5:3b"  # candidate: gemma3:4b
+    ollama_reasoner_model: str = "qwen3:8b"
+    ollama_timeout_seconds: float = 120.0
+
     # Working memory (architecture.md §4)
     working_memory_capacity: int = 30
 
