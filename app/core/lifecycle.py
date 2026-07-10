@@ -8,6 +8,7 @@ from loguru import logger
 
 from app.core.config import get_settings
 from app.core.paths import ensure_data_dirs
+from app.engine.llm.model_manager import ensure_models
 from app.memory.sqlite.connection import create_connection
 from app.services.embedding_service import get_embedding_service
 
@@ -29,9 +30,12 @@ async def lifespan(app: FastAPI):
     app.state.db = create_connection()
     # Background thread: /health responds immediately while the model loads.
     asyncio.get_running_loop().run_in_executor(None, _warm_embedding_model)
+    # Fire-and-forget: pull any missing Ollama models; /health shows progress.
+    app.state.model_pull_task = asyncio.create_task(ensure_models(settings))
     logger.info(
         "{} v{} ready on {}:{}", settings.app_name, settings.version, settings.host, settings.port
     )
     yield
+    app.state.model_pull_task.cancel()
     app.state.db.close()
     logger.info("Shutting down")

@@ -34,6 +34,10 @@ class Settings(BaseSettings):
     ollama_summarizer_model: str = "qwen2.5:3b"  # candidate: gemma3:4b
     ollama_reasoner_model: str = "qwen3:8b"
     ollama_timeout_seconds: float = 120.0
+    # Engine ensures its own models: missing role models are pulled from the
+    # Ollama registry at startup (deployment-agnostic — works for Docker
+    # Compose, native installs, or a future CLI).
+    ollama_auto_pull: bool = True
 
     # Working memory (architecture.md §4)
     working_memory_capacity: int = 30

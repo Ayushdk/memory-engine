@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter
 
 from app.core.config import get_settings
+from app.engine.llm.model_manager import pull_status
 from app.engine.llm.provider import NO_PROVIDER, create_provider
 
 router = APIRouter(tags=["health"])
@@ -12,7 +13,12 @@ router = APIRouter(tags=["health"])
 
 async def _role_health(role, settings):
     provider = create_provider(role, settings)
-    return asdict(await provider.health() if provider else NO_PROVIDER)
+    health = asdict(await provider.health() if provider else NO_PROVIDER)
+    # Auto-pull in flight beats "model not pulled": tell clients it's coming.
+    status = pull_status().get(health["model"])
+    if not health["available"] and status == "pulling":
+        health["detail"] = "model downloading (auto-pull in progress)"
+    return health
 
 
 @router.get("/health")

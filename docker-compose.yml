@@ -1,0 +1,29 @@
+# OpenMemory managed dependencies. Today: Ollama only (engine runs natively
+# during development; an engine service joins here in the distribution phase
+# so end users get the full stack from one `docker compose up -d`).
+#
+# Models are NOT baked in or pull-scripted here — the engine provisions its
+# own models at startup (app/engine/llm/model_manager.py).
+
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: openmemory-ollama
+    ports:
+      - "127.0.0.1:11434:11434"
+    volumes:
+      # Models are multi-GB; they must survive container recreation.
+      - ollama-models:/root/.ollama
+    restart: unless-stopped
+    # Remove this block on machines without an NVIDIA GPU (CPU-only works,
+    # just slower).
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+volumes:
+  ollama-models:

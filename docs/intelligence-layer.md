@@ -198,6 +198,16 @@ runs unchanged.
 app lifespan. No Redis/Celery — this is a local-first application.
 Single-writer discipline: all job writes go through repositories.
 
+**Managed deployment**: Ollama is an internal dependency run by Docker
+Compose (`docker-compose.yml`), not a manual install. The **engine
+provisions its own models** — at startup it pulls missing role models via
+Ollama's `/api/pull` (`model_manager.py`); `/health` reports pull progress.
+Compose stays dumb; provisioning is deployment-agnostic (works for native
+installs and the future OpenMemory CLI too). `idea`: containerize the engine
+into the same compose file at the distribution phase, giving end users the
+whole stack from one `docker compose up -d`; deferred because the torch
+image is heavy and slows the dev loop while the product is single-user.
+
 ## 10. Clients
 
 **Extension (intentionally minimal):** connected status, current project,
