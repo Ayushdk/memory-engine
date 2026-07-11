@@ -48,10 +48,25 @@ def get_memory_admin(request: Request) -> MemoryAdmin:
     return state.memory_admin
 
 
+def get_episode_tracker(request: Request):
+    # Built by the lifespan (it owns the job runner the tracker enqueues to).
+    return request.app.state.episode_tracker
+
+
+def get_episode_repository(request: Request):
+    state = request.app.state
+    if getattr(state, "episode_repository", None) is None:
+        from app.memory.repositories.episode_repository import EpisodeRepository
+
+        state.episode_repository = EpisodeRepository(state.db)
+    return state.episode_repository
+
+
 def get_ingestion_pipeline(request: Request) -> IngestionPipeline:
     state = request.app.state
     if getattr(state, "ingestion_pipeline", None) is None:
         state.ingestion_pipeline = IngestionPipeline(
+            episode_tracker=state.episode_tracker,
             working_memory=PersistentWorkingMemory(
                 WorkingMemoryManager(),
                 WorkingMemoryRepository(state.db),

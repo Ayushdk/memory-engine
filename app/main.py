@@ -4,7 +4,7 @@ from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.error_handlers import register_error_handlers
-from app.api.routes import context_routes, health_routes, memory_routes
+from app.api.routes import context_routes, episode_routes, health_routes, memory_routes
 from app.api.security import require_token
 from app.core.config import get_settings
 from app.core.lifecycle import lifespan
@@ -30,6 +30,7 @@ def create_app() -> FastAPI:
     guarded = [Depends(require_token)]
     app.include_router(memory_routes.router, prefix=API_PREFIX, dependencies=guarded)
     app.include_router(context_routes.router, prefix=API_PREFIX, dependencies=guarded)
+    app.include_router(episode_routes.router, prefix=API_PREFIX, dependencies=guarded)
     register_error_handlers(app)
     return app
 

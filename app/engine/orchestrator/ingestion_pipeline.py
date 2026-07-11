@@ -11,6 +11,7 @@ from loguru import logger
 
 from app.core.config import get_settings
 from app.engine.classifier.memory_classifier import ClassificationResult, MemoryClassifier
+from app.engine.episodes.tracker import EpisodeTracker
 from app.engine.router.storage_router import RoutingResult, StorageRouter
 from app.engine.scorer.importance_scorer import ImportanceScorer, ScoringResult
 from app.engine.working_memory.persistence import PersistentWorkingMemory
@@ -46,7 +47,9 @@ class IngestionPipeline:
         repository: MemoryRepository,
         vector_store: ChromaVectorStore,
         embedding_service: EmbeddingService,
+        episode_tracker: EpisodeTracker | None = None,
     ) -> None:
+        self._episodes = episode_tracker
         self._working_memory = working_memory
         self._classifier = classifier
         self._scorer = scorer
@@ -69,7 +72,7 @@ class IngestionPipeline:
         classification = self._classifier.classify(
             content, self._working_memory.get_messages(session_id)
         )
-        self._working_memory.add_message(
+        message = self._working_memory.add_message(
             session_id,
             role,
             content,
@@ -79,6 +82,10 @@ class IngestionPipeline:
             action=classification.action.value,
             matched_rule=classification.matched_rule,
         )
+        # Every raw turn counts toward the episode, even IGNOREd smalltalk —
+        # the episode is the conversation, not the memories.
+        if self._episodes:
+            self._episodes.on_message(session_id, project_id, platform, at=message.timestamp)
 
         if classification.action is ClassifierAction.IGNORE:
             return IngestionResult(

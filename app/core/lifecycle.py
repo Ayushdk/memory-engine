@@ -8,7 +8,13 @@ from loguru import logger
 
 from app.core.config import get_settings
 from app.core.paths import ensure_data_dirs
+from app.engine.episodes.tracker import EpisodeTracker
 from app.engine.llm.model_manager import ensure_models
+from app.engine.llm.provider import create_provider
+from app.jobs.episode_jobs import summarize_episode
+from app.jobs.job_runner import JobRunner
+from app.memory.repositories.episode_repository import EpisodeRepository
+from app.memory.repositories.working_memory_repository import WorkingMemoryRepository
 from app.memory.sqlite.connection import create_connection
 from app.services.embedding_service import get_embedding_service
 
@@ -32,10 +38,33 @@ async def lifespan(app: FastAPI):
     asyncio.get_running_loop().run_in_executor(None, _warm_embedding_model)
     # Fire-and-forget: pull any missing Ollama models; /health shows progress.
     app.state.model_pull_task = asyncio.create_task(ensure_models(settings))
+
+    # Episodes: boundary tracking + async summarization (intelligence-layer §4).
+    episodes = EpisodeRepository(app.state.db)
+    working_memory_repo = WorkingMemoryRepository(app.state.db)
+    runner = JobRunner()
+    app.state.job_runner = runner
+    app.state.episode_tracker = EpisodeTracker(
+        episodes,
+        on_close=lambda episode: runner.enqueue(
+            f"summarize:{episode.id}",
+            lambda: summarize_episode(
+                episode.id, episodes, working_memory_repo, create_provider("summarizer")
+            ),
+        ),
+    )
+    runner.start()
+    runner.start_periodic(
+        "episode-sweep",
+        settings.episode_sweep_seconds,
+        # sweep is sync + fast; wrap for the runner's coroutine contract
+        lambda: asyncio.to_thread(app.state.episode_tracker.sweep),
+    )
     logger.info(
         "{} v{} ready on {}:{}", settings.app_name, settings.version, settings.host, settings.port
     )
     yield
+    await runner.stop()
     app.state.model_pull_task.cancel()
     app.state.db.close()
     logger.info("Shutting down")

@@ -1,3 +1,11 @@
+import os
+
+# Tests must not inherit the developer's .env (auth token, live Ollama).
+# Env vars beat the dotenv file; set before any app.core.config import.
+os.environ["OPENMEMORY_API_TOKEN"] = ""
+os.environ["OPENMEMORY_LLM_PROVIDER"] = "none"
+os.environ["OPENMEMORY_EMBEDDING_MODEL"] = "sentence-transformers/all-MiniLM-L6-v2"
+
 import pytest
 
 from app.memory.sqlite.connection import create_connection

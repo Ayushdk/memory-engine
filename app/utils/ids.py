@@ -12,6 +12,7 @@ _CROCKFORD32 = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
 
 MEMORY_ID_PREFIX = "mem_"
 PROJECT_ID_PREFIX = "proj_"
+EPISODE_ID_PREFIX = "ep_"
 
 
 def _encode_base32(value: int, length: int) -> str:
@@ -34,3 +35,7 @@ def new_memory_id() -> str:
 
 def new_project_id() -> str:
     return PROJECT_ID_PREFIX + new_ulid()
+
+
+def new_episode_id() -> str:
+    return EPISODE_ID_PREFIX + new_ulid()

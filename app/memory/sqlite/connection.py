@@ -8,6 +8,7 @@ import sqlite3
 from pathlib import Path
 
 from app.core.paths import SQLITE_DB_PATH
+from app.memory.sqlite.migrations import apply_migrations
 from app.memory.sqlite.schema import SCHEMA
 
 
@@ -26,4 +27,5 @@ def create_connection(db_path: Path | str = SQLITE_DB_PATH) -> sqlite3.Connectio
             conn.execute(f"ALTER TABLE sessions ADD COLUMN {column}")
         except sqlite3.OperationalError:
             pass  # column already exists
+    apply_migrations(conn)
     return conn

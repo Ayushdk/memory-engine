@@ -3,6 +3,7 @@
 from functools import lru_cache
 from typing import Literal
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -19,6 +20,12 @@ class Settings(BaseSettings):
     # The extension sets OPENMEMORY_API_TOKEN + OPENMEMORY_CORS_ORIGINS='["chrome-extension://<id>"]'.
     api_token: str | None = None
     cors_origins: list[str] = []
+
+    @field_validator("api_token")
+    @classmethod
+    def _empty_token_means_disabled(cls, value: str | None) -> str | None:
+        # OPENMEMORY_API_TOKEN="" must disable auth, not demand an empty token.
+        return value or None
 
     # Strategy selection (architecture.md §4): rules is the only V1 implementation.
     classifier_strategy: Literal["rules", "ollama", "gemini"] = "rules"
@@ -41,6 +48,12 @@ class Settings(BaseSettings):
 
     # Working memory (architecture.md §4)
     working_memory_capacity: int = 30
+
+    # Episodes (intelligence-layer.md §4). Cap must stay below
+    # working_memory_capacity so the buffer always holds a whole episode.
+    episode_max_messages: int = 25
+    episode_inactivity_minutes: int = 20
+    episode_sweep_seconds: int = 60
 
     # Retrieval (architecture.md §4)
     retrieval_candidates: int = 40

@@ -17,6 +17,7 @@ What to judge in the output:
 import asyncio
 import json
 import sys
+import time
 
 sys.path.insert(0, ".")
 
@@ -92,29 +93,62 @@ SCHEMA = {
 }
 
 
+SUMMARY_PROMPT = f"""You maintain working summaries for an AI memory system.
+
+Summarize the conversation below twice:
+- "internal": for the engine's own records — preserve every decision,
+  constraint, preference, and deferred idea with enough detail to be useful
+  months later. A short paragraph is fine.
+- "transfer": for handing to another AI assistant mid-work — the most
+  compact briefing that lets it continue naturally. 2-3 sentences max.
+
+Use ONLY information present in the conversation. Do not invent names,
+dates, technologies, or details.
+
+Conversation:
+{EXCERPT}
+"""
+
+SUMMARY_SCHEMA = {
+    "type": "object",
+    "properties": {"internal": {"type": "string"}, "transfer": {"type": "string"}},
+    "required": ["internal", "transfer"],
+}
+
+
+async def probe(provider, label, prompt, schema):
+    started = time.monotonic()
+    try:
+        result = await provider.generate(prompt, schema)
+    except ProviderError as exc:
+        print(f"\n[{label}] FAILED after {time.monotonic() - started:.1f}s: {exc}")
+        return False
+    print(f"\n[{label}] ok in {time.monotonic() - started:.1f}s:")
+    print(json.dumps(result, indent=2, ensure_ascii=False))
+    return True
+
+
 async def main() -> int:
     model = sys.argv[1] if len(sys.argv) > 1 else "qwen2.5:3b"
-    provider = OllamaProvider(url="http://127.0.0.1:11434", model=model, timeout=120)
+    provider = OllamaProvider(url="http://127.0.0.1:11434", model=model, timeout=600)
 
     health = await provider.health()
     print(f"provider health: {health}")
     if not health.available:
         return 1
 
-    try:
-        result = await provider.generate(PROMPT, SCHEMA)
-    except ProviderError as exc:
-        print(f"FAILED: {exc}")
-        return 1
+    # cold-start (load) latency is measured by the first probe; the second
+    # runs against a warm model
+    ok_summary = await probe(provider, f"{model} summarization", SUMMARY_PROMPT, SUMMARY_SCHEMA)
+    ok_extract = await probe(provider, f"{model} extraction", PROMPT, SCHEMA)
 
-    print(f"\n{model} proposed {len(result['memories'])} memories:\n")
-    print(json.dumps(result, indent=2))
     print(
-        "\nJudge by eye: SQLite decision w/ Postgres rejection + rationale? "
-        "local-only constraint? small-steps preference? dashboard idea? "
-        "and crucially — no lunch smalltalk?"
+        "\nJudge by eye — extraction: SQLite decision w/ Postgres rejection + "
+        "rationale? local-only constraint? small-steps preference? dashboard "
+        "idea? NO lunch smalltalk? — summaries: transfer compact, internal "
+        "complete? — hallucination: any fact NOT in the excerpt?"
     )
-    return 0
+    return 0 if (ok_summary and ok_extract) else 1
 
 
 if __name__ == "__main__":
