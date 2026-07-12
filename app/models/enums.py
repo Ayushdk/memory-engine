@@ -21,6 +21,14 @@ class MemoryCategory(StrEnum):
     CODE = "code"
     DOCUMENT = "document"
 
+    # Semantic extraction types (intelligence-layer.md §5) — Project Brain
+    # entries distilled from the Workspace's understanding, not raw
+    # conversation. DECISION, PREFERENCE, IDEA above are shared with these.
+    CONSTRAINT = "constraint"
+    FACT = "fact"
+    INSIGHT = "insight"
+    OPEN_QUESTION = "open_question"
+
 
 class MemoryView(StrEnum):
     """Logical view a memory belongs to. Views are filters over the unified

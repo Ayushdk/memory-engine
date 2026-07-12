@@ -7,8 +7,10 @@ import sqlite3
 from datetime import datetime
 
 from app.models.domain.memory import Memory
-from app.models.enums import MemoryCategory, MemoryStatus, MemoryView
+from app.models.enums import Confidence, MemoryCategory, MemoryStatus, MemoryView
 from app.utils.time import utc_now
+
+_CONFIDENCE_RANK = {Confidence.LOW: 0, Confidence.MEDIUM: 1, Confidence.HIGH: 2}
 
 _COLUMNS = (
     "id, content, summary, category, view, project_id, importance, confidence, "
@@ -123,6 +125,25 @@ class MemoryRepository:
                 "UPDATE memories SET last_accessed_at = ?, access_count = access_count + 1 "
                 "WHERE id = ?",
                 [(now, mid) for mid in memory_ids],
+            )
+
+    def touch(self, memory_id: str, confidence: Confidence | None = None) -> None:
+        """Reinforcement: recency bump, plus a confidence upgrade if the new
+        observation is more confident (never downgrades) — decision #5,
+        "same knowledge re-extracted bumps confidence/recency, no duplicate"."""
+        now = utc_now().isoformat()
+        if confidence is not None:
+            existing = self.get(memory_id)
+            if existing and _CONFIDENCE_RANK[confidence] > _CONFIDENCE_RANK[existing.confidence]:
+                with self._conn:
+                    self._conn.execute(
+                        "UPDATE memories SET updated_at = ?, confidence = ? WHERE id = ?",
+                        (now, confidence.value, memory_id),
+                    )
+                return
+        with self._conn:
+            self._conn.execute(
+                "UPDATE memories SET updated_at = ? WHERE id = ?", (now, memory_id)
             )
 
     def delete(self, memory_id: str) -> bool:

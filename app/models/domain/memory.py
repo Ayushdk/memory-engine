@@ -21,6 +21,10 @@ class Source(BaseModel):
     platform: str = Field(min_length=1, description="e.g. 'chatgpt', 'claude', 'gemini'")
     session_id: str | None = None
     role: Literal["user", "assistant"] = "user"
+    # Provenance for extracted memories: the episode whose distilled Workspace
+    # State produced this memory (decision #10: episodes it references are
+    # pinned, never pruned).
+    episode_id: str | None = None
 
 
 class Memory(BaseModel):

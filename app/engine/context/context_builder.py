@@ -43,7 +43,7 @@ class ContextBuilder:
         for memory in ranking.ranked_memories:  # ranking order preserved throughout
             if memory.id in seen:
                 continue
-            if memory.category is MemoryCategory.QUESTION:
+            if memory.category in (MemoryCategory.QUESTION, MemoryCategory.OPEN_QUESTION):
                 open_questions.append(_text(memory))
             elif memory.view is MemoryView.PROFILE:
                 profile.append(_text(memory))

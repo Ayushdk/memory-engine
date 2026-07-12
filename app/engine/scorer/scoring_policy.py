@@ -23,6 +23,11 @@ BASE_SCORES: dict[MemoryCategory, int] = {
     MemoryCategory.DOCUMENT: 5,
     MemoryCategory.MEETING: 4,
     MemoryCategory.QUESTION: 3,
+    # Semantic extraction types (Project Brain).
+    MemoryCategory.CONSTRAINT: 8,
+    MemoryCategory.FACT: 6,
+    MemoryCategory.INSIGHT: 6,
+    MemoryCategory.OPEN_QUESTION: 4,
 }
 
 

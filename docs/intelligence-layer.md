@@ -156,13 +156,27 @@ the why) | stale.
 
 ## 6. Extraction
 
-Runs async on episode close, over the episode (many-to-many: one message may
-yield several memories; one memory may span many messages). Reasoner model,
-JSON-schema output, **empty-list bias**: "return nothing unless something
-durable happened." Deterministic gate in the repository: embedding
-similarity shortlists existing near-matches → reinforce instead of insert.
-Dogfooding examples (should-have / shouldn't-have stored) are the fixture
+Runs async on episode close, **after** the Workspace State update — over the
+Workspace's distilled `internal_summary`, not the raw episode transcript.
+The episode is evidence (provenance via `Source.episode_id`), the Workspace
+is the continuously maintained understanding, and extraction evolves the
+Project Brain from that understanding rather than repeatedly reinterpreting
+raw conversation. Reasoner model, JSON-schema output, **empty-list bias**:
+"return nothing unless something durable and self-contained happened" —
+every extracted memory must stand alone, readable months later without the
+source conversation; uncertainty means no memory, not a weak one.
+Deterministic gate in the repository: embedding similarity shortlists
+existing near-matches → reinforce (recency + confidence bump) instead of
+insert. Dogfooding examples (should-have / shouldn't-have stored) are the fixture
 suite.
+
+Extraction currently re-reads the entire `internal_summary` on every episode
+close, not just what changed since the last extraction. This is intentional:
+simple and deterministic, and easy to validate during dogfooding. Incremental
+extraction (diffing against a last-extracted watermark) is a future
+optimization, not a correctness gap — the reinforcement gate already absorbs
+repeated re-surfacing of the same facts. Do not redesign this without a
+concrete cost or quality problem observed in practice.
 
 ## 7. Reflection
 

@@ -97,12 +97,24 @@ async def process_episode(
     working_memory: WorkingMemoryRepository,
     workspaces,
     summarizer: LLMProvider | None,
+    memories=None,
+    vector_store=None,
+    embeddings=None,
+    reasoner: LLMProvider | None = None,
 ) -> None:
-    """The full close pipeline: summarize, then fold into the project's
-    workspace (episodes without a project still get summarized)."""
+    """The full close pipeline: summarize, fold into the project's workspace,
+    then evolve the Project Brain from that workspace's updated understanding
+    (episodes without a project still get summarized; extraction is skipped
+    unless the memory/vector/embedding args are supplied)."""
+    from app.jobs.extraction_jobs import extract_semantic_memories
     from app.jobs.workspace_jobs import update_workspace
 
     await summarize_episode(episode_id, episodes, working_memory, summarizer)
     episode = episodes.get(episode_id)
     if episode and episode.project_id and episode.summary_internal:
         await update_workspace(episode.project_id, episode, workspaces, summarizer)
+        if memories is not None and vector_store is not None and embeddings is not None:
+            workspace = workspaces.get(episode.project_id)
+            await extract_semantic_memories(
+                episode.project_id, workspace, episode, memories, vector_store, embeddings, reasoner
+            )

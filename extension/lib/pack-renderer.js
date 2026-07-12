@@ -21,6 +21,9 @@ const CATEGORY_HEADINGS = {
   document: "Documents",
   meeting: "Meetings",
   question: "Questions",
+  constraint: "Constraints",
+  fact: "Facts",
+  insight: "Insights",
 };
 
 function heading(category) {
