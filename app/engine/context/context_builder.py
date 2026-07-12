@@ -31,6 +31,7 @@ class ContextBuilder:
         ranking: RankingResult,
         session_id: str,
         project_state: str | None = None,
+        workspace: str | None = None,
         profile_memories: Sequence[Memory] = (),
         recent_conversation: RecentConversation | None = None,
     ) -> ContextPack:
@@ -53,6 +54,8 @@ class ContextBuilder:
         budget = get_settings().context_token_budget
         fixed = (
             estimate_tokens(project_state or "")
+            # transfer summary is pre-budgeted at generation time; never trimmed here
+            + estimate_tokens(workspace or "")
             + sum(estimate_tokens(t) for t in profile)
             + sum(estimate_tokens(t) for t in open_questions)
             # recap is pre-capped by its own sub-budget; counted, never trimmed here
@@ -76,6 +79,7 @@ class ContextBuilder:
             token_estimate=fixed + sum(estimate_tokens(_text(m)) for m in relevant),
             sections=ContextSections(
                 project_state=project_state,
+                workspace=workspace,
                 profile=profile,
                 relevant_memories=relevant_memories,
                 open_questions=open_questions,

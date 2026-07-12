@@ -90,6 +90,19 @@ export class EngineClient {
     return this._request("DELETE", `/api/v1/memories/${encodeURIComponent(memoryId)}`);
   }
 
+  /** Current working state of a project (summaries, goal, blockers). */
+  async getWorkspace(projectId) {
+    return this._request("GET", `/api/v1/workspace/${encodeURIComponent(projectId)}`);
+  }
+
+  async resetWorkspace(projectId) {
+    return this._request("POST", `/api/v1/workspace/${encodeURIComponent(projectId)}/reset`);
+  }
+
+  async archiveWorkspace(projectId) {
+    return this._request("POST", `/api/v1/workspace/${encodeURIComponent(projectId)}/archive`);
+  }
+
   async _request(method, path, body = undefined) {
     const headers = {};
     if (body !== undefined) headers["Content-Type"] = "application/json";

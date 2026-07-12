@@ -15,6 +15,7 @@ from app.engine.retrieval.retrieval_engine import RetrievalEngine
 from app.memory.repositories.memory_repository import MemoryRepository
 from app.memory.repositories.session_repository import SessionRepository
 from app.memory.repositories.working_memory_repository import WorkingMemoryRepository
+from app.memory.repositories.workspace_repository import WorkspaceRepository
 from app.models.domain.context_pack import ContextPack, RecentConversation
 from app.models.enums import MemoryView
 from app.utils.time import utc_now
@@ -30,6 +31,7 @@ class ContextPipeline:
         session_repository: SessionRepository | None = None,
         working_memory_repository: WorkingMemoryRepository | None = None,
         recap_builder: SessionRecapBuilder | None = None,
+        workspace_repository: WorkspaceRepository | None = None,
     ) -> None:
         self._retrieval = retrieval_engine
         self._ranking = ranking_engine
@@ -38,6 +40,7 @@ class ContextPipeline:
         self._sessions = session_repository
         self._snapshots = working_memory_repository
         self._recap_builder = recap_builder or SessionRecapBuilder()
+        self._workspaces = workspace_repository
 
     def build_context(
         self,
@@ -60,7 +63,14 @@ class ContextPipeline:
         the scorer's category base scores."""
         retrieval = self._retrieval.retrieve_for_sync(project_id)
         recap = self._build_recap(requesting_session_id=session_id)
-        return self._assemble(session_id, retrieval, project_id, recent_conversation=recap)
+        # The workspace transfer summary is the "where the work stands"
+        # briefing — the continuity core of a sync pack.
+        workspace = None
+        if project_id and self._workspaces:
+            workspace = self._workspaces.get(project_id).transfer_summary or None
+        return self._assemble(
+            session_id, retrieval, project_id, recent_conversation=recap, workspace=workspace
+        )
 
     def _build_recap(self, requesting_session_id: str) -> RecentConversation | None:
         """Handoff excerpt from the single most recently active OTHER session
@@ -76,7 +86,9 @@ class ContextPipeline:
             return None
         return self._recap_builder.build(source, self._snapshots.load(source.id))
 
-    def _assemble(self, session_id, retrieval, project_id, recent_conversation=None) -> ContextPack:
+    def _assemble(
+        self, session_id, retrieval, project_id, recent_conversation=None, workspace=None
+    ) -> ContextPack:
         ranking = self._ranking.rank(retrieval, project_id)
 
         # Profile facts are mandatory pack content (§7) and would be excluded
@@ -86,7 +98,8 @@ class ContextPipeline:
         pack = self._builder.build(
             ranking,
             session_id,
-            project_state=None,  # populated by consolidation (M4+)
+            project_state=None,  # populated by reflection (Phase 4)
+            workspace=workspace,
             profile_memories=profile_memories,
             recent_conversation=recent_conversation,
         )

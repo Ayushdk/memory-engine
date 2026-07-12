@@ -92,10 +92,21 @@ never write it directly — only the async extraction/reflection pipeline
 does, through the repository gate.
 
 ### 3.3 Workspace — current working context (NOT a memory database)
-The active working state of one project: internal summary, transfer summary,
-current goal, blockers, recent episode summaries. Updates continuously as
-episodes close. Reset or archived by the user; never permanent. Workspace is
-what makes Sync feel like continuing, not being reminded.
+Three related but distinct artifacts, one project each:
+
+- **Workspace Timeline** — chronological episode history (the `episodes`
+  table; nothing extra stored, derived on read via `GET /episodes`).
+- **Workspace State** — current understanding of the work: internal summary
+  (preserves detail, working-notes style, not conversational narration),
+  goal, blockers. Grows by merging each closed episode's summary in.
+- **Transfer Summary** — compact briefing optimized for AI handoff. Budgeted
+  by `transfer_summary_token_budget` (not a sentence count) and re-trimmed
+  after every update regardless of what the model returns. This is the field
+  that leads the Sync Context Pack.
+
+Updates continuously as episodes close. Reset or archived by the user; never
+permanent. Workspace is what makes Sync feel like continuing, not being
+reminded.
 
 ## 4. Episodes
 

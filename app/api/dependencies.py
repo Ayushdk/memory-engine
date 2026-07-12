@@ -48,6 +48,11 @@ def get_memory_admin(request: Request) -> MemoryAdmin:
     return state.memory_admin
 
 
+def get_workspace_repository(request: Request):
+    # Built by the lifespan (shared with the episode-processing jobs).
+    return request.app.state.workspace_repository
+
+
 def get_episode_tracker(request: Request):
     # Built by the lifespan (it owns the job runner the tracker enqueues to).
     return request.app.state.episode_tracker
@@ -94,5 +99,6 @@ def get_context_pipeline(request: Request) -> ContextPipeline:
             repository=_get_repository(state),
             session_repository=SessionRepository(state.db),
             working_memory_repository=WorkingMemoryRepository(state.db),
+            workspace_repository=state.workspace_repository,
         )
     return state.context_pipeline

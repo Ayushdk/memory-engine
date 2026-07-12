@@ -45,6 +45,16 @@ export function render(doc, state) {
   $("stat-ingested").textContent = String(stats.ingested);
   $("stat-sync").textContent = formatLastSync(stats.lastSyncAt);
 
+  // Workspace controls — need a live engine and a selected project
+  const workspaceReady = engine.connected && Boolean(settings.projectId);
+  $("ws-archive").disabled = !workspaceReady;
+  $("ws-reset").disabled = !workspaceReady;
+  if (!$("ws-hint").className.includes("ok") && !$("ws-hint").className.includes("err")) {
+    $("ws-hint").textContent = workspaceReady
+      ? "Working state updates as you chat."
+      : "Connect the engine and pick a project.";
+  }
+
   // Capture toggle
   $("capture-toggle").checked = !settings.paused;
   $("capture-sub").textContent = settings.paused

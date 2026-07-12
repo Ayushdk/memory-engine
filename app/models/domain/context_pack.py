@@ -34,6 +34,9 @@ class RecentConversation(BaseModel):
 
 class ContextSections(BaseModel):
     project_state: str | None = None
+    # Workspace transfer summary: the compact "where the work stands right
+    # now" briefing (sync mode; intelligence-layer.md §3.3).
+    workspace: str | None = None
     profile: list[str] = Field(default_factory=list)
     relevant_memories: list[ContextMemory] = Field(default_factory=list)
     open_questions: list[str] = Field(default_factory=list)

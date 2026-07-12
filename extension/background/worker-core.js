@@ -124,6 +124,24 @@ export function createCore({
       }
     },
 
+    /**
+     * Workspace controls (popup). Project-scoped: uses the selected project.
+     * "reset" clears the working state; "archive" snapshots then clears.
+     */
+    async "workspace-action"({ action }) {
+      const settings = await loadSettings(local);
+      if (!settings.projectId) return { ok: false, error: "Pick a project first" };
+      try {
+        const client = await getClient();
+        if (action === "archive") await client.archiveWorkspace(settings.projectId);
+        else if (action === "reset") await client.resetWorkspace(settings.projectId);
+        else return { ok: false, error: `unknown workspace action: ${action}` };
+        return { ok: true };
+      } catch (error) {
+        return { ok: false, error: error.message };
+      }
+    },
+
     /** Adapter selectors broke: surface it via the activity indicator. */
     async "adapter-broken"({ platform }) {
       await session.set({

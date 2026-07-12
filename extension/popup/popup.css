@@ -244,3 +244,8 @@ body {
   background: var(--surface-2);
   color: var(--text);
 }
+
+/* Workspace controls */
+.ws-actions { display: flex; gap: 6px; }
+.btn-sm { padding: 3px 10px; font-size: 12px; }
+.ws-hint { margin-top: 6px; }

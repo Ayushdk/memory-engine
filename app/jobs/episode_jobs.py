@@ -89,3 +89,20 @@ async def summarize_episode(
         summary = fallback_summary(turns)
     episodes.set_summary(episode_id, summary)
     logger.info("Episode {} summarized ({} chars)", episode_id, len(summary))
+
+
+async def process_episode(
+    episode_id: str,
+    episodes: EpisodeRepository,
+    working_memory: WorkingMemoryRepository,
+    workspaces,
+    summarizer: LLMProvider | None,
+) -> None:
+    """The full close pipeline: summarize, then fold into the project's
+    workspace (episodes without a project still get summarized)."""
+    from app.jobs.workspace_jobs import update_workspace
+
+    await summarize_episode(episode_id, episodes, working_memory, summarizer)
+    episode = episodes.get(episode_id)
+    if episode and episode.project_id and episode.summary_internal:
+        await update_workspace(episode.project_id, episode, workspaces, summarizer)

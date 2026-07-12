@@ -113,3 +113,19 @@ describe("determinism", () => {
     expect(renderPack(FULL)).toBe(renderPack(FULL));
   });
 });
+
+describe("workspace section (transfer summary)", () => {
+  it("renders '## Current work' right after project state", () => {
+    const text = renderPack(
+      pack({ project_state: "Building the memory engine.", workspace: "Mid-refactor of the ranking engine." }),
+    );
+    expect(text).toContain(
+      "## Project state\nBuilding the memory engine.\n\n## Current work\nMid-refactor of the ranking engine.",
+    );
+  });
+
+  it("is omitted when absent", () => {
+    const text = renderPack(pack({ project_state: "Building the memory engine." }));
+    expect(text).not.toContain("## Current work");
+  });
+});

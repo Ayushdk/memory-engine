@@ -26,6 +26,29 @@ MIGRATIONS: list[str] = [
     CREATE INDEX IF NOT EXISTS idx_episodes_session ON episodes (session_id, status);
     CREATE INDEX IF NOT EXISTS idx_episodes_project ON episodes (project_id, status);
     """,
+    # 2 — workspace: current working state per project (intelligence-layer.md
+    # §3.3). Timeline is NOT stored here — it derives from the episodes table.
+    """
+    CREATE TABLE IF NOT EXISTS workspaces (
+        project_id       TEXT PRIMARY KEY,
+        internal_summary TEXT NOT NULL DEFAULT '',
+        transfer_summary TEXT NOT NULL DEFAULT '',
+        goal             TEXT,
+        blockers_json    TEXT NOT NULL DEFAULT '[]',
+        updated_at       TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS workspace_archives (
+        id               TEXT PRIMARY KEY,
+        project_id       TEXT NOT NULL,
+        internal_summary TEXT NOT NULL,
+        transfer_summary TEXT NOT NULL,
+        goal             TEXT,
+        blockers_json    TEXT NOT NULL,
+        archived_at      TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_workspace_archives_project
+        ON workspace_archives (project_id, archived_at);
+    """,
 ]
 
 

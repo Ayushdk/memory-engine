@@ -37,6 +37,13 @@ def test_project_state_included_and_counted():
     assert pack.token_estimate == estimate_tokens("Backend = FastAPI")
 
 
+def test_workspace_transfer_summary_included_and_counted():
+    briefing = "Building OpenMemory Phase 2; workspace store just landed; next: pack section."
+    pack = builder.build(ranked(), session_id="s1", workspace=briefing)
+    assert pack.sections.workspace == briefing
+    assert pack.token_estimate == estimate_tokens(briefing)
+
+
 def test_profile_section_from_arg_and_ranked_profile_views():
     given = mem(
         content="Prefers diagrams", view=MemoryView.PROFILE, project_id=None,

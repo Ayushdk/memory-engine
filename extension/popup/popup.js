@@ -42,6 +42,24 @@ document.getElementById("settings").addEventListener("click", () => {
   chrome.runtime.openOptionsPage();
 });
 
+for (const [buttonId, action] of [["ws-archive", "archive"], ["ws-reset", "reset"]]) {
+  document.getElementById(buttonId).addEventListener("click", async () => {
+    if (action === "reset" && !confirm("Clear the current working state? (No snapshot is kept.)")) {
+      return;
+    }
+    const hint = document.getElementById("ws-hint");
+    hint.className = "hint muted ws-hint";
+    hint.textContent = action === "archive" ? "Archiving…" : "Resetting…";
+    const result = await chrome.runtime.sendMessage({ type: "workspace-action", action });
+    hint.className = result?.ok ? "hint ok ws-hint" : "hint err ws-hint";
+    hint.textContent = result?.ok
+      ? action === "archive"
+        ? "Workspace archived — starting fresh."
+        : "Workspace cleared."
+      : (result?.error ?? "Workspace action failed");
+  });
+}
+
 document.getElementById("capture-toggle").addEventListener("change", async (event) => {
   await chrome.runtime.sendMessage({
     type: "set-settings",

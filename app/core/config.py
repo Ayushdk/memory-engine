@@ -55,6 +55,11 @@ class Settings(BaseSettings):
     episode_inactivity_minutes: int = 20
     episode_sweep_seconds: int = 60
 
+    # Workspace (intelligence-layer.md §3.3): transfer summary targets a
+    # token budget (not a sentence count); internal notes get a hard ceiling.
+    transfer_summary_token_budget: int = 150
+    workspace_internal_max_chars: int = 4000
+
     # Retrieval (architecture.md §4)
     retrieval_candidates: int = 40
     retrieval_top_k: int = 15

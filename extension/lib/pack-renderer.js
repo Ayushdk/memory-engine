@@ -39,6 +39,10 @@ export function renderPack(pack) {
     parts.push(`## Project state\n${sections.project_state}`);
   }
 
+  if (sections.workspace) {
+    parts.push(`## Current work\n${sections.workspace}`);
+  }
+
   if (sections.profile?.length) {
     parts.push(`## About the user\n${sections.profile.map((f) => `- ${f}`).join("\n")}`);
   }

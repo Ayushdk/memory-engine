@@ -289,3 +289,55 @@ describe("sync message", () => {
     expect(reply.error).toContain("reloading");
   });
 });
+
+describe("workspace-action message", () => {
+  function workspaceCore({ projectId = "proj_x", fail = null } = {}) {
+    const calls = [];
+    const core = createCore({
+      local: fakeArea({ projectId }),
+      session: fakeArea(),
+      clientFactory: () => ({
+        async archiveWorkspace(id) {
+          calls.push(["archive", id]);
+          if (fail) throw fail;
+        },
+        async resetWorkspace(id) {
+          calls.push(["reset", id]);
+          if (fail) throw fail;
+        },
+      }),
+    });
+    return { core, calls };
+  }
+
+  it("archives the workspace for the selected project", async () => {
+    const { core, calls } = workspaceCore();
+    expect(await core.handle({ type: "workspace-action", action: "archive" })).toEqual({ ok: true });
+    expect(calls).toEqual([["archive", "proj_x"]]);
+  });
+
+  it("resets the workspace for the selected project", async () => {
+    const { core, calls } = workspaceCore();
+    expect(await core.handle({ type: "workspace-action", action: "reset" })).toEqual({ ok: true });
+    expect(calls).toEqual([["reset", "proj_x"]]);
+  });
+
+  it("requires a selected project", async () => {
+    const { core, calls } = workspaceCore({ projectId: "" });
+    const reply = await core.handle({ type: "workspace-action", action: "archive" });
+    expect(reply).toEqual({ ok: false, error: "Pick a project first" });
+    expect(calls).toHaveLength(0);
+  });
+
+  it("surfaces engine failures", async () => {
+    const { core } = workspaceCore({ fail: new Error("ECONNREFUSED") });
+    const reply = await core.handle({ type: "workspace-action", action: "reset" });
+    expect(reply).toEqual({ ok: false, error: "ECONNREFUSED" });
+  });
+
+  it("rejects unknown actions", async () => {
+    const { core } = workspaceCore();
+    const reply = await core.handle({ type: "workspace-action", action: "wat" });
+    expect(reply).toEqual({ ok: false, error: "unknown workspace action: wat" });
+  });
+});

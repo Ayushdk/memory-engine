@@ -87,6 +87,19 @@
         </span>
       </label>
 
+      <section class="card workspace">
+        <div class="row">
+          <span class="row-label">Workspace</span>
+          <span class="ws-actions">
+            <button class="btn btn-ghost btn-sm" id="ws-archive"
+                    title="Snapshot the working state, then start fresh">Archive</button>
+            <button class="btn btn-ghost btn-sm" id="ws-reset"
+                    title="Clear the working state without keeping a snapshot">Reset</button>
+          </span>
+        </div>
+        <p class="hint muted ws-hint" id="ws-hint">Working state updates as you chat.</p>
+      </section>
+
       <details class="debug">
         <summary class="muted">Debug</summary>
         <dl class="debug-grid mono">
