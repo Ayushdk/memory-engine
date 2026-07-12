@@ -15,7 +15,7 @@ _CONFIDENCE_RANK = {Confidence.LOW: 0, Confidence.MEDIUM: 1, Confidence.HIGH: 2}
 _COLUMNS = (
     "id, content, summary, category, view, project_id, importance, confidence, "
     "status, supersedes, source_json, tags_json, created_at, updated_at, "
-    "last_accessed_at, access_count"
+    "last_accessed_at, access_count, reinforcement_count"
 )
 
 
@@ -37,6 +37,7 @@ def _to_row(m: Memory) -> tuple:
         m.updated_at.isoformat(),
         m.last_accessed_at.isoformat() if m.last_accessed_at else None,
         m.access_count,
+        m.reinforcement_count,
     )
 
 
@@ -60,6 +61,7 @@ def _from_row(row: sqlite3.Row) -> Memory:
             datetime.fromisoformat(row["last_accessed_at"]) if row["last_accessed_at"] else None
         ),
         access_count=row["access_count"],
+        reinforcement_count=row["reinforcement_count"],
     )
 
 
@@ -69,7 +71,7 @@ class MemoryRepository:
 
     def save(self, memory: Memory) -> None:
         """Insert or replace (upsert keyed on id)."""
-        placeholders = ", ".join("?" * 16)
+        placeholders = ", ".join("?" * 17)
         with self._conn:
             self._conn.execute(
                 f"INSERT OR REPLACE INTO memories ({_COLUMNS}) VALUES ({placeholders})",
@@ -137,13 +139,16 @@ class MemoryRepository:
             if existing and _CONFIDENCE_RANK[confidence] > _CONFIDENCE_RANK[existing.confidence]:
                 with self._conn:
                     self._conn.execute(
-                        "UPDATE memories SET updated_at = ?, confidence = ? WHERE id = ?",
+                        "UPDATE memories SET updated_at = ?, confidence = ?, "
+                        "reinforcement_count = reinforcement_count + 1 WHERE id = ?",
                         (now, confidence.value, memory_id),
                     )
                 return
         with self._conn:
             self._conn.execute(
-                "UPDATE memories SET updated_at = ? WHERE id = ?", (now, memory_id)
+                "UPDATE memories SET updated_at = ?, reinforcement_count = reinforcement_count + 1 "
+                "WHERE id = ?",
+                (now, memory_id),
             )
 
     def delete(self, memory_id: str) -> bool:

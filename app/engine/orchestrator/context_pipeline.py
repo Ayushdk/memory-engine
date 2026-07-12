@@ -13,6 +13,7 @@ from app.engine.context.session_recap import SessionRecapBuilder
 from app.engine.retrieval.ranking_engine import RankingEngine
 from app.engine.retrieval.retrieval_engine import RetrievalEngine
 from app.memory.repositories.memory_repository import MemoryRepository
+from app.memory.repositories.project_state_repository import ProjectStateRepository
 from app.memory.repositories.session_repository import SessionRepository
 from app.memory.repositories.working_memory_repository import WorkingMemoryRepository
 from app.memory.repositories.workspace_repository import WorkspaceRepository
@@ -32,6 +33,7 @@ class ContextPipeline:
         working_memory_repository: WorkingMemoryRepository | None = None,
         recap_builder: SessionRecapBuilder | None = None,
         workspace_repository: WorkspaceRepository | None = None,
+        project_state_repository: ProjectStateRepository | None = None,
     ) -> None:
         self._retrieval = retrieval_engine
         self._ranking = ranking_engine
@@ -41,6 +43,7 @@ class ContextPipeline:
         self._snapshots = working_memory_repository
         self._recap_builder = recap_builder or SessionRecapBuilder()
         self._workspaces = workspace_repository
+        self._project_states = project_state_repository
 
     def build_context(
         self,
@@ -95,10 +98,15 @@ class ContextPipeline:
         # by the project hard filter, so they come from the source of truth.
         profile_memories = self._repository.list(view=MemoryView.PROFILE)
 
+        project_state = None
+        if project_id and self._project_states:
+            state = self._project_states.latest(project_id)
+            project_state = state.content if state else None
+
         pack = self._builder.build(
             ranking,
             session_id,
-            project_state=None,  # populated by reflection (Phase 4)
+            project_state=project_state,
             workspace=workspace,
             profile_memories=profile_memories,
             recent_conversation=recent_conversation,

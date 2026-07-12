@@ -21,7 +21,7 @@ from app.memory.repositories.memory_repository import MemoryRepository
 from app.memory.repositories.project_state_repository import ProjectStateRepository
 from app.memory.vector.chroma_client import ChromaVectorStore, active_where
 from app.models.domain.memory import Memory
-from app.models.enums import Confidence, MemoryStatus, MemoryView
+from app.models.enums import Confidence, MemoryCategory, MemoryStatus, MemoryView
 from app.services.embedding_service import EmbeddingService
 
 MAX_CLUSTER_SIZE = 4
@@ -230,3 +230,66 @@ async def synthesize_project_state(
 
     state = project_states.save(project_id, content, generated_from=[m.id for m in active])
     logger.info("Project state v{} synthesized for {}", state.version, project_id)
+
+
+def promote_to_personal_brain(
+    project_id: str,
+    memories: MemoryRepository,
+    vector_store: ChromaVectorStore,
+    embeddings: EmbeddingService,
+    relations: MemoryRelationRepository,
+) -> int:
+    """Personal Brain is a promotion target, not an extraction target
+    (intelligence-layer.md §7.1) — no LLM call here, just a deterministic
+    threshold gate on knowledge that has already proven durable in the
+    Project Brain. Only `preference` memories qualify: the one category
+    that means "how the user likes to work" rather than a project fact."""
+    threshold = get_settings().personal_brain_promotion_threshold
+    candidates = memories.list(
+        view=MemoryView.PROJECT,
+        project_id=project_id,
+        category=MemoryCategory.PREFERENCE,
+        status=MemoryStatus.ACTIVE,
+    )
+    promoted = 0
+    for candidate in candidates:
+        if candidate.confidence is not Confidence.HIGH:
+            continue
+        if candidate.reinforcement_count < threshold:
+            continue
+        if relations.has_relation(candidate.id, "promoted_from"):
+            continue
+
+        embedding = embeddings.embed(candidate.content)
+        existing_id = None
+        for neighbor_id, similarity in vector_store.query(embedding, n_results=5, where=active_where()):
+            if neighbor_id == candidate.id or similarity < get_settings().update_similarity_threshold:
+                continue
+            profile_match = memories.get(neighbor_id)
+            if profile_match and profile_match.view is MemoryView.PROFILE:
+                existing_id = profile_match.id
+                break
+
+        if existing_id:
+            memories.touch(existing_id, confidence=Confidence.HIGH)
+            relations.link(existing_id, candidate.id, "promoted_from")
+        else:
+            profile_memory = Memory(
+                content=candidate.content,
+                summary=candidate.summary,
+                category=candidate.category,
+                view=MemoryView.PROFILE,
+                project_id=None,
+                importance=candidate.importance,
+                confidence=Confidence.HIGH,
+                source=candidate.source,
+            )
+            memories.save(profile_memory)
+            vector_store.upsert(profile_memory, embeddings.embed(profile_memory.content))
+            relations.link(profile_memory.id, candidate.id, "promoted_from")
+
+        promoted += 1
+
+    if promoted:
+        logger.info("Promoted {} preference(s) to Personal Brain from {}", promoted, project_id)
+    return promoted

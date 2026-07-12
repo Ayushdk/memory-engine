@@ -19,3 +19,12 @@ class MemoryRelationRepository:
                 "VALUES (?,?,?,?)",
                 (from_id, to_id, relation, utc_now().isoformat()),
             )
+
+    def has_relation(self, to_id: str, relation: str) -> bool:
+        """Whether any memory already has this relation pointing at `to_id`
+        (e.g. was this project memory already promoted)."""
+        row = self._conn.execute(
+            "SELECT 1 FROM memory_relations WHERE to_id = ? AND relation = ? LIMIT 1",
+            (to_id, relation),
+        ).fetchone()
+        return row is not None

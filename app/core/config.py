@@ -78,6 +78,11 @@ class Settings(BaseSettings):
     dedup_similarity_threshold: float = 0.92
     update_similarity_threshold: float = 0.85
 
+    # Personal Brain promotion (intelligence-layer.md §7.1): a PROJECT
+    # preference memory promotes to PROFILE once reinforced this many times
+    # at HIGH confidence. Reflection executes it; not another LLM job.
+    personal_brain_promotion_threshold: int = 3
+
 
 @lru_cache
 def get_settings() -> Settings:

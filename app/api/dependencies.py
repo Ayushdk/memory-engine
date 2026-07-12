@@ -105,5 +105,6 @@ def get_context_pipeline(request: Request) -> ContextPipeline:
             session_repository=SessionRepository(state.db),
             working_memory_repository=WorkingMemoryRepository(state.db),
             workspace_repository=state.workspace_repository,
+            project_state_repository=state.project_state_repository,
         )
     return state.context_pipeline

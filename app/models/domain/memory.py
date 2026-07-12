@@ -53,6 +53,9 @@ class Memory(BaseModel):
     # Written by the Retrieval Engine; feed reflection (decay, dedup priority).
     last_accessed_at: datetime | None = None
     access_count: int = Field(default=0, ge=0)
+    # Bumped on every MemoryRepository.touch() (re-observed/re-extracted).
+    # Gates Personal Brain promotion (intelligence-layer.md §7.1).
+    reinforcement_count: int = Field(default=0, ge=0)
 
     @field_validator("tags")
     @classmethod

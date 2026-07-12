@@ -7,11 +7,11 @@ import re
 from tests.conftest import make_memory
 
 from app.engine.llm.provider import ProviderError
-from app.jobs.reflection_jobs import reflect_project, synthesize_project_state
+from app.jobs.reflection_jobs import promote_to_personal_brain, reflect_project, synthesize_project_state
 from app.memory.repositories.memory_relation_repository import MemoryRelationRepository
 from app.memory.repositories.memory_repository import MemoryRepository
 from app.memory.repositories.project_state_repository import ProjectStateRepository
-from app.models.enums import Confidence, MemoryStatus
+from app.models.enums import Confidence, MemoryCategory, MemoryStatus, MemoryView
 
 
 class FakeProvider:
@@ -187,3 +187,90 @@ async def test_synthesize_project_state_skips_without_provider(db_conn):
     await synthesize_project_state("proj_openmemory", memories, project_states, None)
 
     assert project_states.latest("proj_openmemory") is None
+
+
+def _preference(memories: MemoryRepository, vector_store, embeddings, **overrides):
+    defaults = dict(
+        id="mem_pref",
+        content="The user prefers small, incremental commits.",
+        category=MemoryCategory.PREFERENCE,
+        confidence=Confidence.HIGH,
+        reinforcement_count=3,
+    )
+    m = make_memory(**{**defaults, **overrides})
+    memories.save(m)
+    vector_store.upsert(m, embeddings.embed(m.content))
+    return m
+
+
+def test_promotion_skips_below_reinforcement_threshold(db_conn, vector_store, embedding_service):
+    memories = MemoryRepository(db_conn)
+    relations = MemoryRelationRepository(db_conn)
+    _preference(memories, vector_store, embedding_service, reinforcement_count=1)
+
+    promoted = promote_to_personal_brain("proj_openmemory", memories, vector_store, embedding_service, relations)
+
+    assert promoted == 0
+    assert memories.list(view=MemoryView.PROFILE) == []
+
+
+def test_promotion_skips_non_preference_category(db_conn, vector_store, embedding_service):
+    memories = MemoryRepository(db_conn)
+    relations = MemoryRelationRepository(db_conn)
+    _preference(memories, vector_store, embedding_service, category=MemoryCategory.DECISION)
+
+    promoted = promote_to_personal_brain("proj_openmemory", memories, vector_store, embedding_service, relations)
+
+    assert promoted == 0
+
+
+def test_promotion_creates_profile_memory(db_conn, vector_store, embedding_service):
+    memories = MemoryRepository(db_conn)
+    relations = MemoryRelationRepository(db_conn)
+    pref = _preference(memories, vector_store, embedding_service)
+
+    promoted = promote_to_personal_brain("proj_openmemory", memories, vector_store, embedding_service, relations)
+
+    assert promoted == 1
+    profile = memories.list(view=MemoryView.PROFILE)
+    assert len(profile) == 1
+    assert profile[0].content == pref.content
+    assert profile[0].project_id is None
+    # original PROJECT memory is untouched, just linked
+    assert memories.get(pref.id).view is MemoryView.PROJECT
+    assert relations.has_relation(pref.id, "promoted_from")
+
+
+def test_promotion_is_idempotent(db_conn, vector_store, embedding_service):
+    memories = MemoryRepository(db_conn)
+    relations = MemoryRelationRepository(db_conn)
+    _preference(memories, vector_store, embedding_service)
+
+    first = promote_to_personal_brain("proj_openmemory", memories, vector_store, embedding_service, relations)
+    second = promote_to_personal_brain("proj_openmemory", memories, vector_store, embedding_service, relations)
+
+    assert first == 1
+    assert second == 0
+    assert len(memories.list(view=MemoryView.PROFILE)) == 1
+
+
+def test_promotion_reinforces_existing_profile_match_instead_of_duplicating(db_conn, vector_store, embedding_service):
+    memories = MemoryRepository(db_conn)
+    relations = MemoryRelationRepository(db_conn)
+    existing = make_memory(
+        id="mem_profile_existing",
+        content="The user prefers small, incremental commits.",
+        category=MemoryCategory.PREFERENCE,
+        view=MemoryView.PROFILE,
+        project_id=None,
+        confidence=Confidence.HIGH,
+    )
+    memories.save(existing)
+    vector_store.upsert(existing, embedding_service.embed(existing.content))
+    pref = _preference(memories, vector_store, embedding_service, content="The user prefers small, incremental commits.")
+
+    promoted = promote_to_personal_brain("proj_openmemory", memories, vector_store, embedding_service, relations)
+
+    assert promoted == 1
+    assert len(memories.list(view=MemoryView.PROFILE)) == 1
+    assert relations.has_relation(pref.id, "promoted_from")

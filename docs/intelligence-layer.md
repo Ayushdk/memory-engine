@@ -208,6 +208,40 @@ Reflection only regenerates the Project State (§8) when it changed
 something, or extraction stored new memories this cycle — an unchanged
 Project Brain gets no new state version.
 
+**Scheduling is an implementation detail, not architecture.** Today
+reflection runs after every episode close — simple, deterministic, easy to
+validate during dogfooding. As the Project Brain grows this is expected to
+evolve toward a scheduler that runs when meaningful work exists: a
+threshold of newly-extracted memories, a time interval, or an explicit user
+request, rather than strictly every close. That's a future optimization,
+not a correctness gap — do not build it without a concrete cost or quality
+problem observed in practice.
+
+## 7.1 Personal Brain promotion
+
+The Personal Brain is a **promotion target, not an extraction target**.
+There is no LLM job that extracts "personal facts" directly. The only flow
+into `MemoryView.PROFILE` is:
+
+- **Explicit statement** — the V1 rule router (`RuleStorageRouter`) already
+  routes first-person preference statements ("I prefer...", "I'm...")
+  straight to `PROFILE` at ingest time. This *is* the "explicit user
+  confirmation" path; Phase 5 does not duplicate it.
+- **Repeated reinforcement** — reflection promotes a `PROJECT`-view memory
+  once it has proven durable: `category=preference`, `confidence=high`,
+  and `reinforcement_count` (bumped on every `MemoryRepository.touch()`)
+  at or above `personal_brain_promotion_threshold`. Only `preference`
+  qualifies — it is the one category that means "how the user likes to
+  work" rather than a project-specific fact; other categories (recurring
+  constraints, habits) are a future extension, not built now.
+
+Promotion is deterministic, not another LLM judgment call: the original
+`PROJECT` memory is untouched (still true for that project) and linked via
+`memory_relations` (`promoted_from`) to the new or reinforced `PROFILE`
+memory. If a similar `PROFILE` memory already exists (embedding similarity
+≥ `update_similarity_threshold`), promotion reinforces it instead of
+creating a duplicate across projects.
+
 ## 8. Project State & the Sync Context Pack
 
 **Project State**: synthesized by reflection from active Project Brain
@@ -226,6 +260,14 @@ unchanged — pack precedes the user's draft):
 3. **Preferences** — Personal Brain: how to work with this user
 4. **Transfer summary** — the workspace's compact "the moment": current goal, blockers, recent thread
 5. **Open questions & deferred ideas** — ranked below active guidance; budget headroom only
+
+`ContextPipeline` now sources section 1 from `ProjectStateRepository.latest()`
+(previously always `None` — Project State didn't exist until Phase 4).
+Sections 2–5 were already wired in earlier phases: `ContextBuilder` groups
+ranked memories by category, Personal Brain (`PROFILE` view) facts are
+injected unconditionally as mandatory content, and the transfer summary
+comes from the Workspace. Budget trimming drops the lowest-ranked relevant
+memories first; Project State and Profile are never trimmed.
 
 ## 9. Models & validation
 

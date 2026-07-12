@@ -16,6 +16,7 @@ from app.engine.retrieval.ranking_engine import RankingEngine
 from app.engine.retrieval.retrieval_engine import RetrievalEngine
 from app.main import create_app
 from app.memory.repositories.memory_repository import MemoryRepository
+from app.memory.repositories.project_state_repository import ProjectStateRepository
 from app.models.enums import MemoryCategory, MemoryView
 from app.utils.time import utc_now
 from tests.conftest import make_memory
@@ -152,3 +153,21 @@ def test_sync_works_without_vector_index(client, repo, vector_store, monkeypatch
     assert [m["summary"] for m in sync(client)["sections"]["relevant_memories"]] == [
         "We use FastAPI."
     ]
+
+
+def test_sync_pack_leads_with_latest_project_state(repo, vector_store, db_conn):
+    project_states = ProjectStateRepository(db_conn)
+    project_states.save("proj_openmemory", "OpenMemory is a local-first continuity engine.", generated_from=[])
+    pipeline = ContextPipeline(
+        retrieval_engine=RetrievalEngine(FakeEmbedder(), vector_store, repo),
+        ranking_engine=RankingEngine(),
+        context_builder=ContextBuilder(),
+        repository=repo,
+        project_state_repository=project_states,
+    )
+    app = create_app()
+    app.dependency_overrides[get_context_pipeline] = lambda: pipeline
+    with TestClient(app) as client:
+        pack = sync(client, project_id="proj_openmemory")
+
+    assert pack["sections"]["project_state"] == "OpenMemory is a local-first continuity engine."

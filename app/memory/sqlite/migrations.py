@@ -63,6 +63,12 @@ MIGRATIONS: list[str] = [
     CREATE INDEX IF NOT EXISTS idx_project_states_project
         ON project_states (project_id, version DESC);
     """,
+    # 4 — reinforcement count: how many times a memory has been re-observed
+    # (bumped on every MemoryRepository.touch()). Gates Personal Brain
+    # promotion (intelligence-layer.md §7.1) alongside confidence.
+    """
+    ALTER TABLE memories ADD COLUMN reinforcement_count INTEGER NOT NULL DEFAULT 0;
+    """,
 ]
 
 

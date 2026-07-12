@@ -111,7 +111,11 @@ async def process_episode(
     get summarized; each downstream stage is skipped unless its dependencies
     are supplied."""
     from app.jobs.extraction_jobs import extract_semantic_memories
-    from app.jobs.reflection_jobs import reflect_project, synthesize_project_state
+    from app.jobs.reflection_jobs import (
+        promote_to_personal_brain,
+        reflect_project,
+        synthesize_project_state,
+    )
     from app.jobs.workspace_jobs import update_workspace
 
     await summarize_episode(episode_id, episodes, working_memory, summarizer)
@@ -127,5 +131,6 @@ async def process_episode(
                 changed = await reflect_project(
                     episode.project_id, memories, vector_store, embeddings, relations, reasoner
                 )
+                promote_to_personal_brain(episode.project_id, memories, vector_store, embeddings, relations)
                 if extracted or changed.merged or changed.superseded or changed.strengthened:
                     await synthesize_project_state(episode.project_id, memories, project_states, reasoner)
