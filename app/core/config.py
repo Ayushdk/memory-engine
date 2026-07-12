@@ -60,6 +60,13 @@ class Settings(BaseSettings):
     transfer_summary_token_budget: int = 150
     workspace_internal_max_chars: int = 4000
 
+    # Rolling Current Context Summary (conversation compression pipeline):
+    # one evolving summary per session, chained forward on every
+    # summarization — Summarize(previous summary + unsummarized raw
+    # messages). This is the canonical state injected on Sync, separate
+    # from workspace/project knowledge.
+    conversation_summary_token_budget: int = 400
+
     # Retrieval (architecture.md §4)
     retrieval_candidates: int = 40
     retrieval_top_k: int = 15

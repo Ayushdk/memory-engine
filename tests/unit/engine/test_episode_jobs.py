@@ -5,9 +5,14 @@ from datetime import timedelta
 import pytest
 
 from app.engine.llm.provider import ProviderError
-from app.jobs.episode_jobs import summarize_episode
+from app.jobs.episode_jobs import summarize_and_update_workspace, summarize_episode
+from app.memory.repositories.conversation_summary_repository import (
+    ConversationSummaryRepository,
+)
 from app.memory.repositories.episode_repository import EpisodeRepository
+from app.memory.repositories.raw_message_repository import RawMessageRepository
 from app.memory.repositories.working_memory_repository import WorkingMemoryRepository
+from app.memory.repositories.workspace_repository import WorkspaceRepository
 from app.models.domain.session import ConversationMessage
 from app.utils.time import utc_now
 
@@ -108,3 +113,67 @@ async def test_open_or_missing_episode_is_ignored(repos):
     await summarize_episode(open_episode.id, episodes, working_memory, None)
     assert episodes.get(open_episode.id).status == "open"  # untouched
     await summarize_episode("ep_missing", episodes, working_memory, None)  # no raise
+
+
+class DualSchemaFakeProvider:
+    """Answers both the episode-summary schema and the workspace-update
+    schema, since summarize_and_update_workspace drives both prompts."""
+
+    def __init__(self, text):
+        self._text = text
+        self.prompts = []
+
+    async def generate(self, prompt, output_schema):
+        self.prompts.append(prompt)
+        if "internal_summary" in output_schema["properties"]:
+            return {
+                "internal_summary": self._text,
+                "transfer_summary": self._text,
+                "goal": "",
+                "blockers": [],
+            }
+        return {"summary": self._text}
+
+    async def health(self):  # pragma: no cover - Protocol completeness
+        raise NotImplementedError
+
+
+async def test_summarize_and_update_workspace_is_idempotent(db_conn):
+    episodes, working_memory = EpisodeRepository(db_conn), WorkingMemoryRepository(db_conn)
+    workspaces = WorkspaceRepository(db_conn)
+    episode = closed_episode_with_turns(
+        (episodes, working_memory), [turn("user", "let's use SQLite")]
+    )
+    provider = DualSchemaFakeProvider("Chose SQLite.")
+
+    await summarize_and_update_workspace(episode.id, episodes, working_memory, workspaces, provider)
+    first = workspaces.get("proj_a")
+    assert "Chose SQLite." in first.internal_summary
+    prompts_after_first_call = len(provider.prompts)
+
+    # Calling again (e.g. the background job re-running after an inline Sync
+    # already did the work) must not re-apply the episode a second time.
+    await summarize_and_update_workspace(episode.id, episodes, working_memory, workspaces, provider)
+    second = workspaces.get("proj_a")
+    assert second.internal_summary == first.internal_summary
+    assert len(provider.prompts) == prompts_after_first_call  # no new prompts sent
+
+
+async def test_summarize_and_update_workspace_chains_the_rolling_summary(db_conn):
+    episodes, working_memory = EpisodeRepository(db_conn), WorkingMemoryRepository(db_conn)
+    workspaces = WorkspaceRepository(db_conn)
+    raw_messages = RawMessageRepository(db_conn)
+    conversation_summaries = ConversationSummaryRepository(db_conn)
+    episode = closed_episode_with_turns(
+        (episodes, working_memory), [turn("user", "let's use SQLite")]
+    )
+    raw_messages.append("s1", "user", "let's use SQLite")
+    provider = DualSchemaFakeProvider("Chose SQLite.")
+
+    await summarize_and_update_workspace(
+        episode.id, episodes, working_memory, workspaces, provider,
+        raw_messages=raw_messages, conversation_summaries=conversation_summaries,
+    )
+
+    assert conversation_summaries.get("s1").summary != ""
+    assert all(m.summarized for m in raw_messages.list("s1"))

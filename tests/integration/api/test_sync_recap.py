@@ -52,8 +52,11 @@ def ingest(client, content, session_id="chatgpt-s1", role="user"):
     return r.json()
 
 
-def sync(client, session_id="claude-s1"):
-    r = client.post(CONTEXT, json={"session_id": session_id, "mode": "sync"})
+def sync(client, session_id="claude-s1", include_brain=True):
+    r = client.post(
+        CONTEXT,
+        json={"session_id": session_id, "mode": "sync", "include_brain": include_brain},
+    )
     assert r.status_code == 200
     return r.json()
 

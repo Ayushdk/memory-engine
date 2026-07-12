@@ -7,6 +7,7 @@ so an engine restart loses nothing.
 from typing import Literal
 
 from app.engine.working_memory.working_memory_manager import WorkingMemoryManager
+from app.memory.repositories.raw_message_repository import RawMessageRepository
 from app.memory.repositories.session_repository import SessionRepository
 from app.memory.repositories.working_memory_repository import WorkingMemoryRepository
 from app.models.domain.session import ConversationMessage
@@ -18,10 +19,12 @@ class PersistentWorkingMemory:
         manager: WorkingMemoryManager,
         working_memory_repository: WorkingMemoryRepository,
         session_repository: SessionRepository,
+        raw_message_repository: RawMessageRepository | None = None,
     ) -> None:
         self._manager = manager
         self._snapshots = working_memory_repository
         self._sessions = session_repository
+        self._raw_messages = raw_message_repository
         self._manager.restore(self._snapshots.load_all())
 
     def add_message(
@@ -40,6 +43,11 @@ class PersistentWorkingMemory:
         )
         self._sessions.touch(session_id, platform, project_id, title=title)
         self._snapshots.save_snapshot(session_id, self._manager.get_messages(session_id))
+        if self._raw_messages is not None:
+            self._raw_messages.append(
+                session_id, role, content, project_id=project_id, platform=platform,
+                timestamp=message.timestamp,
+            )
         return message
 
     def get_messages(

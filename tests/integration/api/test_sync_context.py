@@ -15,6 +15,9 @@ from app.engine.orchestrator.context_pipeline import ContextPipeline
 from app.engine.retrieval.ranking_engine import RankingEngine
 from app.engine.retrieval.retrieval_engine import RetrievalEngine
 from app.main import create_app
+from app.memory.repositories.conversation_summary_repository import (
+    ConversationSummaryRepository,
+)
 from app.memory.repositories.memory_repository import MemoryRepository
 from app.memory.repositories.project_state_repository import ProjectStateRepository
 from app.models.enums import MemoryCategory, MemoryView
@@ -52,12 +55,32 @@ def seed(repo, content, category=MemoryCategory.DECISION, importance=9, **overri
     return memory
 
 
-def sync(client, project_id=None):
+def sync(client, project_id=None, include_brain=False):
     r = client.post(
-        CONTEXT, json={"session_id": "s1", "mode": "sync", "project_id": project_id}
+        CONTEXT,
+        json={
+            "session_id": "s1", "mode": "sync", "project_id": project_id,
+            "include_brain": include_brain,
+        },
     )
     assert r.status_code == 200
     return r.json()
+
+
+def test_sync_default_excludes_brain_content(client, repo):
+    # Injection rules: by default a sync pack carries only the working
+    # summary/project context/task state — long-term memories are opt-in.
+    seed(
+        repo, "Prefers diagrams.", MemoryCategory.PREFERENCE,
+        importance=7, view=MemoryView.PROFILE, project_id=None,
+    )
+    seed(repo, "Which cache should we pick?", MemoryCategory.QUESTION, importance=3)
+    seed(repo, "We use FastAPI.", importance=10)
+
+    sections = sync(client)["sections"]
+    assert sections["profile"] == []
+    assert sections["open_questions"] == []
+    assert sections["relevant_memories"] == []
 
 
 def test_sync_pack_prioritizes_importance(client, repo):
@@ -66,7 +89,9 @@ def test_sync_pack_prioritizes_importance(client, repo):
     seed(repo, "Engine-first architecture.", MemoryCategory.ARCHITECTURE, importance=9)
     seed(repo, "Ship V1 by March.", MemoryCategory.GOAL, importance=8)
 
-    summaries = [m["summary"] for m in sync(client)["sections"]["relevant_memories"]]
+    summaries = [
+        m["summary"] for m in sync(client, include_brain=True)["sections"]["relevant_memories"]
+    ]
     assert summaries == [
         "We use FastAPI.",
         "Engine-first architecture.",
@@ -80,7 +105,9 @@ def test_recency_breaks_importance_ties(client, repo):
     seed(repo, "Old decision.", importance=9, created_at=old_time, updated_at=old_time)
     seed(repo, "Fresh decision.", importance=9)
 
-    summaries = [m["summary"] for m in sync(client)["sections"]["relevant_memories"]]
+    summaries = [
+        m["summary"] for m in sync(client, include_brain=True)["sections"]["relevant_memories"]
+    ]
     assert summaries == ["Fresh decision.", "Old decision."]
 
 
@@ -89,12 +116,13 @@ def test_project_filtering(client, repo):
     seed(repo, "Theirs.", project_id="proj_y")
 
     summaries = [
-        m["summary"] for m in sync(client, project_id="proj_x")["sections"]["relevant_memories"]
+        m["summary"]
+        for m in sync(client, project_id="proj_x", include_brain=True)["sections"]["relevant_memories"]
     ]
     assert summaries == ["Ours."]
 
 
-def test_profile_and_open_questions_included(client, repo):
+def test_profile_and_open_questions_included_when_requested(client, repo):
     seed(
         repo, "Prefers diagrams.", MemoryCategory.PREFERENCE,
         importance=7, view=MemoryView.PROFILE, project_id=None,
@@ -102,7 +130,7 @@ def test_profile_and_open_questions_included(client, repo):
     seed(repo, "Which cache should we pick?", MemoryCategory.QUESTION, importance=3)
     seed(repo, "We use FastAPI.")
 
-    sections = sync(client)["sections"]
+    sections = sync(client, include_brain=True)["sections"]
     assert sections["profile"] == ["Prefers diagrams."]
     assert sections["open_questions"] == ["Which cache should we pick?"]
     assert [m["summary"] for m in sections["relevant_memories"]] == ["We use FastAPI."]
@@ -110,7 +138,7 @@ def test_profile_and_open_questions_included(client, repo):
 
 def test_empty_project(client, repo):
     seed(repo, "Other project fact.", project_id="proj_y")
-    pack = sync(client, project_id="proj_empty")
+    pack = sync(client, project_id="proj_empty", include_brain=True)
     assert pack["sections"]["relevant_memories"] == []
     assert pack["sections"]["open_questions"] == []
 
@@ -118,7 +146,10 @@ def test_empty_project(client, repo):
 def test_deterministic_output(client, repo):
     for i in range(4):
         seed(repo, f"Decision {i}.", importance=9)
-    assert sync(client)["sections"] == sync(client)["sections"]
+    assert (
+        sync(client, include_brain=True)["sections"]
+        == sync(client, include_brain=True)["sections"]
+    )
 
 
 def test_query_mode_still_works(client, repo, vector_store):
@@ -150,9 +181,9 @@ def test_sync_works_without_vector_index(client, repo, vector_store, monkeypatch
 
     monkeypatch.setattr(vector_store, "query", boom)
     seed(repo, "We use FastAPI.")
-    assert [m["summary"] for m in sync(client)["sections"]["relevant_memories"]] == [
-        "We use FastAPI."
-    ]
+    assert [
+        m["summary"] for m in sync(client, include_brain=True)["sections"]["relevant_memories"]
+    ] == ["We use FastAPI."]
 
 
 def test_sync_pack_leads_with_latest_project_state(repo, vector_store, db_conn):
@@ -171,3 +202,25 @@ def test_sync_pack_leads_with_latest_project_state(repo, vector_store, db_conn):
         pack = sync(client, project_id="proj_openmemory")
 
     assert pack["sections"]["project_state"] == "OpenMemory is a local-first continuity engine."
+
+
+def test_sync_always_includes_rolling_conversation_summary(repo, vector_store, db_conn):
+    # The rolling Current Context Summary is core task state, not brain
+    # content — it must appear on sync even with include_brain=False.
+    from app.models.domain.conversation_summary import ConversationSummary
+
+    conversation_summaries = ConversationSummaryRepository(db_conn)
+    conversation_summaries.save(ConversationSummary(session_id="s1", summary="Chose SQLite."))
+    pipeline = ContextPipeline(
+        retrieval_engine=RetrievalEngine(FakeEmbedder(), vector_store, repo),
+        ranking_engine=RankingEngine(),
+        context_builder=ContextBuilder(),
+        repository=repo,
+        conversation_summary_repository=conversation_summaries,
+    )
+    app = create_app()
+    app.dependency_overrides[get_context_pipeline] = lambda: pipeline
+    with TestClient(app) as client:
+        pack = sync(client, include_brain=False)
+
+    assert pack["sections"]["conversation_summary"] == "Chose SQLite."

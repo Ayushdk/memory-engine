@@ -8,7 +8,12 @@ deterministic transcript digest, so episodes ALWAYS end up summarized.
 from loguru import logger
 
 from app.engine.llm.provider import LLMProvider, ProviderError
+from app.jobs.conversation_summary_jobs import update_conversation_summary
+from app.memory.repositories.conversation_summary_repository import (
+    ConversationSummaryRepository,
+)
 from app.memory.repositories.episode_repository import EpisodeRepository
+from app.memory.repositories.raw_message_repository import RawMessageRepository
 from app.memory.repositories.working_memory_repository import WorkingMemoryRepository
 from app.models.domain.episode import Episode
 from app.models.domain.session import ConversationMessage
@@ -91,6 +96,40 @@ async def summarize_episode(
     logger.info("Episode {} summarized ({} chars)", episode_id, len(summary))
 
 
+async def summarize_and_update_workspace(
+    episode_id: str,
+    episodes: EpisodeRepository,
+    working_memory: WorkingMemoryRepository,
+    workspaces,
+    summarizer: LLMProvider | None,
+    projects=None,
+    raw_messages: RawMessageRepository | None = None,
+    conversation_summaries: ConversationSummaryRepository | None = None,
+) -> None:
+    """The fast phase of closing an episode: summarize it, fold that summary
+    into the project's workspace (internal + transfer summaries), and chain
+    the session's rolling Current Context Summary forward. Idempotent on the
+    episode's own status — once it has moved past 'closed' this is a no-op,
+    so calling it twice (once inline for an immediate Sync, once from the
+    background job) never double-applies an episode's summary into the
+    workspace or double-folds raw messages into the rolling summary."""
+    from app.jobs.workspace_jobs import update_workspace
+
+    episode = episodes.get(episode_id)
+    if episode is None or episode.status != "closed":
+        return
+    await summarize_episode(episode_id, episodes, working_memory, summarizer)
+    episode = episodes.get(episode_id)
+    if episode and episode.project_id and episode.summary_internal:
+        if projects is not None:
+            projects.get_or_create(episode.project_id)
+        await update_workspace(episode.project_id, episode, workspaces, summarizer)
+    if episode and raw_messages is not None and conversation_summaries is not None:
+        await update_conversation_summary(
+            episode.session_id, raw_messages, conversation_summaries, summarizer
+        )
+
+
 async def process_episode(
     episode_id: str,
     episodes: EpisodeRepository,
@@ -104,6 +143,8 @@ async def process_episode(
     relations=None,
     project_states=None,
     projects=None,
+    raw_messages: RawMessageRepository | None = None,
+    conversation_summaries: ConversationSummaryRepository | None = None,
 ) -> None:
     """The full close pipeline: summarize, fold into the project's workspace,
     evolve the Project Brain from that workspace's updated understanding,
@@ -117,14 +158,14 @@ async def process_episode(
         reflect_project,
         synthesize_project_state,
     )
-    from app.jobs.workspace_jobs import update_workspace
 
-    await summarize_episode(episode_id, episodes, working_memory, summarizer)
+    await summarize_and_update_workspace(
+        episode_id, episodes, working_memory, workspaces, summarizer,
+        projects=projects, raw_messages=raw_messages,
+        conversation_summaries=conversation_summaries,
+    )
     episode = episodes.get(episode_id)
     if episode and episode.project_id and episode.summary_internal:
-        if projects is not None:
-            projects.get_or_create(episode.project_id)
-        await update_workspace(episode.project_id, episode, workspaces, summarizer)
         if memories is not None and vector_store is not None and embeddings is not None:
             workspace = workspaces.get(episode.project_id)
             extracted = await extract_semantic_memories(

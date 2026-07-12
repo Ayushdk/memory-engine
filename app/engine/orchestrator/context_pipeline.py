@@ -11,7 +11,10 @@ from app.core.config import get_settings
 from app.engine.context.context_builder import ContextBuilder
 from app.engine.context.session_recap import SessionRecapBuilder
 from app.engine.retrieval.ranking_engine import RankingEngine
-from app.engine.retrieval.retrieval_engine import RetrievalEngine
+from app.engine.retrieval.retrieval_engine import RetrievalEngine, RetrievalResult
+from app.memory.repositories.conversation_summary_repository import (
+    ConversationSummaryRepository,
+)
 from app.memory.repositories.memory_repository import MemoryRepository
 from app.memory.repositories.project_state_repository import ProjectStateRepository
 from app.memory.repositories.session_repository import SessionRepository
@@ -34,6 +37,7 @@ class ContextPipeline:
         recap_builder: SessionRecapBuilder | None = None,
         workspace_repository: WorkspaceRepository | None = None,
         project_state_repository: ProjectStateRepository | None = None,
+        conversation_summary_repository: ConversationSummaryRepository | None = None,
     ) -> None:
         self._retrieval = retrieval_engine
         self._ranking = ranking_engine
@@ -44,6 +48,7 @@ class ContextPipeline:
         self._recap_builder = recap_builder or SessionRecapBuilder()
         self._workspaces = workspace_repository
         self._project_states = project_state_repository
+        self._conversation_summaries = conversation_summary_repository
 
     def build_context(
         self,
@@ -59,20 +64,34 @@ class ContextPipeline:
         self,
         session_id: str,
         project_id: str | None = None,
+        include_brain: bool = False,
     ) -> ContextPack:
         """State-driven: 'what should a brand-new conversation receive first?'
-        No query → no similarity signal; ranking runs on importance + recency
-        (+ access), which naturally surfaces decisions/architecture/goals via
-        the scorer's category base scores."""
-        retrieval = self._retrieval.retrieve_for_sync(project_id)
+        This is a conversation-compression sync, not a retrieval feature: by
+        default it carries only the latest working summary, project context,
+        and task state. Long-term/personal-brain memories are brain content —
+        opt in with `include_brain=True` when explicitly requested."""
+        if include_brain:
+            # No query → no similarity signal; ranking runs on importance +
+            # recency (+ access), surfacing decisions/architecture/goals via
+            # the scorer's category base scores.
+            retrieval = self._retrieval.retrieve_for_sync(project_id)
+        else:
+            retrieval = RetrievalResult(query_embedding=[], candidate_memory_ids=[], retrieved_memories=[])
         recap = self._build_recap(requesting_session_id=session_id)
         # The workspace transfer summary is the "where the work stands"
         # briefing — the continuity core of a sync pack.
         workspace = None
         if project_id and self._workspaces:
             workspace = self._workspaces.get(project_id).transfer_summary or None
+        # The rolling Current Context Summary is the canonical conversation
+        # state — always included on sync, never gated by include_brain.
+        conversation_summary = None
+        if self._conversation_summaries:
+            conversation_summary = self._conversation_summaries.get(session_id).summary or None
         return self._assemble(
-            session_id, retrieval, project_id, recent_conversation=recap, workspace=workspace
+            session_id, retrieval, project_id, recent_conversation=recap, workspace=workspace,
+            conversation_summary=conversation_summary, include_brain=include_brain,
         )
 
     def _build_recap(self, requesting_session_id: str) -> RecentConversation | None:
@@ -90,13 +109,14 @@ class ContextPipeline:
         return self._recap_builder.build(source, self._snapshots.load(source.id))
 
     def _assemble(
-        self, session_id, retrieval, project_id, recent_conversation=None, workspace=None
+        self, session_id, retrieval, project_id, recent_conversation=None, workspace=None,
+        conversation_summary=None, include_brain: bool = True,
     ) -> ContextPack:
         ranking = self._ranking.rank(retrieval, project_id)
 
-        # Profile facts are mandatory pack content (§7) and would be excluded
-        # by the project hard filter, so they come from the source of truth.
-        profile_memories = self._repository.list(view=MemoryView.PROFILE)
+        # Profile facts are mandatory pack content (§7) for query mode; sync
+        # mode default-excludes them (brain content, opt-in only).
+        profile_memories = self._repository.list(view=MemoryView.PROFILE) if include_brain else []
 
         project_state = None
         if project_id and self._project_states:
@@ -108,6 +128,7 @@ class ContextPipeline:
             session_id,
             project_state=project_state,
             workspace=workspace,
+            conversation_summary=conversation_summary,
             profile_memories=profile_memories,
             recent_conversation=recent_conversation,
         )

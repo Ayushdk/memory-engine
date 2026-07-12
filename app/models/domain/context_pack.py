@@ -37,6 +37,10 @@ class ContextSections(BaseModel):
     # Workspace transfer summary: the compact "where the work stands right
     # now" briefing (sync mode; intelligence-layer.md §3.3).
     workspace: str | None = None
+    # Rolling Current Context Summary: the canonical conversation state,
+    # chained forward over raw messages — distinct from workspace/project
+    # knowledge, always included on sync (task state, not brain content).
+    conversation_summary: str | None = None
     profile: list[str] = Field(default_factory=list)
     relevant_memories: list[ContextMemory] = Field(default_factory=list)
     open_questions: list[str] = Field(default_factory=list)

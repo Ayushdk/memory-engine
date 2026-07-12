@@ -18,7 +18,11 @@ from app.engine.router.storage_router import RuleStorageRouter
 from app.engine.scorer.importance_scorer import create_scorer
 from app.engine.working_memory.persistence import PersistentWorkingMemory
 from app.engine.working_memory.working_memory_manager import WorkingMemoryManager
+from app.memory.repositories.conversation_summary_repository import (
+    ConversationSummaryRepository,
+)
 from app.memory.repositories.memory_repository import MemoryRepository
+from app.memory.repositories.raw_message_repository import RawMessageRepository
 from app.memory.repositories.session_repository import SessionRepository
 from app.memory.repositories.working_memory_repository import WorkingMemoryRepository
 from app.memory.vector.chroma_client import ChromaVectorStore
@@ -77,6 +81,23 @@ def get_episode_repository(request: Request):
     return state.episode_repository
 
 
+def get_raw_message_repository(request: Request) -> RawMessageRepository:
+    # Built by the lifespan (shared with episode summarization).
+    return request.app.state.raw_message_repository
+
+
+def get_conversation_summary_repository(request: Request) -> ConversationSummaryRepository:
+    # Built by the lifespan (shared with the rolling conversation summary job).
+    return request.app.state.conversation_summary_repository
+
+
+def get_working_memory_repository(request: Request) -> WorkingMemoryRepository:
+    state = request.app.state
+    if getattr(state, "working_memory_repository", None) is None:
+        state.working_memory_repository = WorkingMemoryRepository(state.db)
+    return state.working_memory_repository
+
+
 def get_ingestion_pipeline(request: Request) -> IngestionPipeline:
     state = request.app.state
     if getattr(state, "ingestion_pipeline", None) is None:
@@ -84,8 +105,9 @@ def get_ingestion_pipeline(request: Request) -> IngestionPipeline:
             episode_tracker=state.episode_tracker,
             working_memory=PersistentWorkingMemory(
                 WorkingMemoryManager(),
-                WorkingMemoryRepository(state.db),
+                get_working_memory_repository(request),
                 SessionRepository(state.db),
+                request.app.state.raw_message_repository,
             ),
             classifier=create_classifier(),
             scorer=create_scorer(),
@@ -108,8 +130,9 @@ def get_context_pipeline(request: Request) -> ContextPipeline:
             context_builder=ContextBuilder(),
             repository=_get_repository(state),
             session_repository=SessionRepository(state.db),
-            working_memory_repository=WorkingMemoryRepository(state.db),
+            working_memory_repository=get_working_memory_repository(request),
             workspace_repository=state.workspace_repository,
             project_state_repository=state.project_state_repository,
+            conversation_summary_repository=state.conversation_summary_repository,
         )
     return state.context_pipeline

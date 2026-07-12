@@ -69,6 +69,34 @@ MIGRATIONS: list[str] = [
     """
     ALTER TABLE memories ADD COLUMN reinforcement_count INTEGER NOT NULL DEFAULT 0;
     """,
+    # 5 — raw messages: append-only ledger of every ingested message, never
+    # deleted. Episodes summarize a window of these and mark them summarized;
+    # the row itself always survives (full-conversation compression pipeline).
+    """
+    CREATE TABLE IF NOT EXISTS raw_messages (
+        id           TEXT PRIMARY KEY,
+        session_id   TEXT NOT NULL,
+        project_id   TEXT,
+        platform     TEXT NOT NULL DEFAULT 'unknown',
+        role         TEXT NOT NULL,
+        content      TEXT NOT NULL,
+        timestamp    TEXT NOT NULL,
+        summarized   INTEGER NOT NULL DEFAULT 0
+    );
+    CREATE INDEX IF NOT EXISTS idx_raw_messages_session
+        ON raw_messages (session_id, summarized, timestamp);
+    """,
+    # 6 — conversation summaries: one evolving "Current Context Summary" per
+    # session, chained forward on every summarization. This is the canonical
+    # conversation state injected on Sync — separate from workspace/project
+    # knowledge, which stays project-scoped.
+    """
+    CREATE TABLE IF NOT EXISTS conversation_summaries (
+        session_id  TEXT PRIMARY KEY,
+        summary     TEXT NOT NULL DEFAULT '',
+        updated_at  TEXT NOT NULL
+    );
+    """,
 ]
 
 

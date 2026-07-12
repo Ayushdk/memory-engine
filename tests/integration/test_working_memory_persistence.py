@@ -6,6 +6,7 @@ import pytest
 
 from app.engine.working_memory.persistence import PersistentWorkingMemory
 from app.engine.working_memory.working_memory_manager import WorkingMemoryManager
+from app.memory.repositories.raw_message_repository import RawMessageRepository
 from app.memory.repositories.session_repository import SessionRepository
 from app.memory.repositories.working_memory_repository import WorkingMemoryRepository
 from app.utils.time import utc_now
@@ -13,13 +14,13 @@ from app.utils.time import utc_now
 
 @pytest.fixture
 def repos(db_conn):
-    return WorkingMemoryRepository(db_conn), SessionRepository(db_conn)
+    return WorkingMemoryRepository(db_conn), SessionRepository(db_conn), RawMessageRepository(db_conn)
 
 
 def make_wm(repos, capacity=5):
     """A fresh PersistentWorkingMemory over the same DB — 'an engine (re)start'."""
-    wm_repo, session_repo = repos
-    return PersistentWorkingMemory(WorkingMemoryManager(capacity), wm_repo, session_repo)
+    wm_repo, session_repo, raw_repo = repos
+    return PersistentWorkingMemory(WorkingMemoryManager(capacity), wm_repo, session_repo, raw_repo)
 
 
 def contents(wm, session_id):
@@ -70,7 +71,7 @@ def test_active_session_lookup(repos):
     wm = make_wm(repos)
     wm.add_message("recent", "user", "hi", platform="claude")
 
-    _, session_repo = repos
+    _, session_repo, _ = repos
     active = session_repo.list_active(since=utc_now() - timedelta(minutes=60))
     assert [s.id for s in active] == ["recent"]
     assert session_repo.list_active(since=utc_now() + timedelta(seconds=1)) == []
@@ -120,6 +121,16 @@ def test_title_is_sticky_like_project(repos):
 
     session = repos[1].get("s1")
     assert session.title == "Designing OpenMemory"
+
+
+def test_raw_messages_survive_fifo_eviction(repos):
+    wm = make_wm(repos, capacity=3)
+    for i in range(5):
+        wm.add_message("s1", "user", f"msg{i}")
+
+    assert contents(wm, "s1") == ["msg2", "msg3", "msg4"]  # working memory: only the tail
+    raw_repo = repos[2]
+    assert [m.content for m in raw_repo.list("s1")] == [f"msg{i}" for i in range(5)]  # all of it
 
 
 def test_project_id_upgrade_but_never_downgrade(repos):

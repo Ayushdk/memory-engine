@@ -14,6 +14,7 @@ MEMORY_ID_PREFIX = "mem_"
 PROJECT_ID_PREFIX = "proj_"
 EPISODE_ID_PREFIX = "ep_"
 PROJECT_STATE_ID_PREFIX = "ps_"
+RAW_MESSAGE_ID_PREFIX = "msg_"
 
 
 def _encode_base32(value: int, length: int) -> str:
@@ -44,3 +45,7 @@ def new_episode_id() -> str:
 
 def new_project_state_id() -> str:
     return PROJECT_STATE_ID_PREFIX + new_ulid()
+
+
+def new_raw_message_id() -> str:
+    return RAW_MESSAGE_ID_PREFIX + new_ulid()

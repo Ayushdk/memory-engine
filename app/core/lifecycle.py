@@ -13,11 +13,15 @@ from app.engine.llm.model_manager import ensure_models
 from app.engine.llm.provider import create_provider
 from app.jobs.episode_jobs import process_episode
 from app.jobs.job_runner import JobRunner
+from app.memory.repositories.conversation_summary_repository import (
+    ConversationSummaryRepository,
+)
 from app.memory.repositories.episode_repository import EpisodeRepository
 from app.memory.repositories.memory_relation_repository import MemoryRelationRepository
 from app.memory.repositories.memory_repository import MemoryRepository
 from app.memory.repositories.project_repository import ProjectRepository
 from app.memory.repositories.project_state_repository import ProjectStateRepository
+from app.memory.repositories.raw_message_repository import RawMessageRepository
 from app.memory.repositories.working_memory_repository import WorkingMemoryRepository
 from app.memory.repositories.workspace_repository import WorkspaceRepository
 from app.memory.sqlite.connection import create_connection
@@ -48,6 +52,11 @@ async def lifespan(app: FastAPI):
     # Episodes: boundary tracking + async summarization (intelligence-layer §4).
     episodes = EpisodeRepository(app.state.db)
     working_memory_repo = WorkingMemoryRepository(app.state.db)
+    app.state.working_memory_repository = working_memory_repo
+    raw_messages = RawMessageRepository(app.state.db)
+    app.state.raw_message_repository = raw_messages
+    conversation_summaries = ConversationSummaryRepository(app.state.db)
+    app.state.conversation_summary_repository = conversation_summaries
     workspaces = WorkspaceRepository(app.state.db)
     app.state.workspace_repository = workspaces
     # Shared with app.api.dependencies (one repository, one vector store).
@@ -80,6 +89,8 @@ async def lifespan(app: FastAPI):
                 relations=relations,
                 project_states=project_states,
                 projects=projects,
+                raw_messages=raw_messages,
+                conversation_summaries=conversation_summaries,
             ),
         ),
     )

@@ -12,6 +12,10 @@ class ContextRequest(BaseModel):
     mode: Literal["query", "sync"] = "query"
     query: str | None = Field(default=None, min_length=1)
     project_id: str | None = None
+    # sync mode default-excludes brain content (profile/long-term memories/
+    # dashboard state) per the injection rules — only the latest working
+    # summary, project context, and task state go out unless asked for more.
+    include_brain: bool = False
 
     @model_validator(mode="after")
     def _query_matches_mode(self) -> Self:
