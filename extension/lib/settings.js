@@ -4,7 +4,7 @@
  */
 
 export const DEFAULT_SETTINGS = {
-  engineUrl: "http://127.0.0.1:8000",
+  engineUrl: "http://127.0.0.1:8765",
   apiToken: "",
   projectId: "",
   paused: false,

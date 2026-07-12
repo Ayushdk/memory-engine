@@ -32,7 +32,7 @@ describe("request shaping", () => {
     });
 
     const { url, init } = stub.calls[0];
-    expect(url).toBe("http://127.0.0.1:8000/api/v1/ingest");
+    expect(url).toBe("http://127.0.0.1:8765/api/v1/ingest");
     expect(init.method).toBe("POST");
     expect(JSON.parse(init.body)).toEqual({
       session_id: "chatgpt-abc",
@@ -67,17 +67,17 @@ describe("request shaping", () => {
     const stub = fakeFetch();
     await client(stub).getMemories({ projectId: "proj_x", limit: 20 });
     expect(stub.calls[0].url).toBe(
-      "http://127.0.0.1:8000/api/v1/memories?project_id=proj_x&limit=20",
+      "http://127.0.0.1:8765/api/v1/memories?project_id=proj_x&limit=20",
     );
 
     await client(stub).getMemories();
-    expect(stub.calls[1].url).toBe("http://127.0.0.1:8000/api/v1/memories");
+    expect(stub.calls[1].url).toBe("http://127.0.0.1:8765/api/v1/memories");
   });
 
   it("deleteMemory encodes the id into the path", async () => {
     const stub = fakeFetch();
     await client(stub).deleteMemory("mem_01ABC");
-    expect(stub.calls[0].url).toBe("http://127.0.0.1:8000/api/v1/memories/mem_01ABC");
+    expect(stub.calls[0].url).toBe("http://127.0.0.1:8765/api/v1/memories/mem_01ABC");
     expect(stub.calls[0].init.method).toBe("DELETE");
   });
 });

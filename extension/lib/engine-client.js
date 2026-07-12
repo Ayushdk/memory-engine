@@ -32,7 +32,7 @@ export class EngineClient {
    * @param {number} [options.timeoutMs]
    * @param {typeof fetch} [options.fetchFn] - injectable for tests.
    */
-  constructor({ baseUrl = "http://127.0.0.1:8000", token = null, timeoutMs = 8000, fetchFn } = {}) {
+  constructor({ baseUrl = "http://127.0.0.1:8765", token = null, timeoutMs = 8000, fetchFn } = {}) {
     this.baseUrl = baseUrl.replace(/\/+$/, "");
     this.token = token;
     this.timeoutMs = timeoutMs;

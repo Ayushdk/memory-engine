@@ -15,7 +15,7 @@ const popupHtml = readFileSync(
 function state(overrides = {}) {
   return {
     engine: { connected: true, version: "0.2.0" },
-    settings: { engineUrl: "http://127.0.0.1:8000", apiToken: "", projectId: "", paused: false },
+    settings: { engineUrl: "http://127.0.0.1:8765", apiToken: "", projectId: "", paused: false },
     stats: { ingested: 0, lastSyncAt: null },
     tab: null,
     ...overrides,
