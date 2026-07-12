@@ -63,6 +63,11 @@ def get_project_state_repository(request: Request):
     return request.app.state.project_state_repository
 
 
+def get_project_repository(request: Request):
+    # Built by the lifespan (shared with the episode-processing job).
+    return request.app.state.project_repository
+
+
 def get_episode_repository(request: Request):
     state = request.app.state
     if getattr(state, "episode_repository", None) is None:

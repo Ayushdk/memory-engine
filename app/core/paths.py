@@ -10,6 +10,8 @@ CHROMA_DIR = DATA_DIR / "chroma"
 
 SQLITE_DB_PATH = SQLITE_DIR / "openmemory.db"
 
+DASHBOARD_DIST_DIR = PROJECT_ROOT / "dashboard" / "dist"
+
 
 def ensure_data_dirs() -> None:
     for path in (SQLITE_DIR, CHROMA_DIR):

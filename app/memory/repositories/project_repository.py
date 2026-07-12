@@ -46,3 +46,13 @@ class ProjectRepository:
     def list(self) -> list[Project]:
         rows = self._conn.execute("SELECT * FROM projects ORDER BY id").fetchall()
         return [_from_row(r) for r in rows]
+
+    def get_or_create(self, project_id: str) -> Project:
+        """Projects aren't declared up front — the first episode closed
+        against a project_id is what makes it "known" to the Dashboard."""
+        existing = self.get(project_id)
+        if existing is not None:
+            return existing
+        project = Project(id=project_id, name=project_id)
+        self.save(project)
+        return project

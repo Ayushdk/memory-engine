@@ -103,6 +103,7 @@ async def process_episode(
     reasoner: LLMProvider | None = None,
     relations=None,
     project_states=None,
+    projects=None,
 ) -> None:
     """The full close pipeline: summarize, fold into the project's workspace,
     evolve the Project Brain from that workspace's updated understanding,
@@ -121,6 +122,8 @@ async def process_episode(
     await summarize_episode(episode_id, episodes, working_memory, summarizer)
     episode = episodes.get(episode_id)
     if episode and episode.project_id and episode.summary_internal:
+        if projects is not None:
+            projects.get_or_create(episode.project_id)
         await update_workspace(episode.project_id, episode, workspaces, summarizer)
         if memories is not None and vector_store is not None and embeddings is not None:
             workspace = workspaces.get(episode.project_id)

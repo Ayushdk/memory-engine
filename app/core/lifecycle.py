@@ -16,6 +16,7 @@ from app.jobs.job_runner import JobRunner
 from app.memory.repositories.episode_repository import EpisodeRepository
 from app.memory.repositories.memory_relation_repository import MemoryRelationRepository
 from app.memory.repositories.memory_repository import MemoryRepository
+from app.memory.repositories.project_repository import ProjectRepository
 from app.memory.repositories.project_state_repository import ProjectStateRepository
 from app.memory.repositories.working_memory_repository import WorkingMemoryRepository
 from app.memory.repositories.workspace_repository import WorkspaceRepository
@@ -57,6 +58,8 @@ async def lifespan(app: FastAPI):
     relations = MemoryRelationRepository(app.state.db)
     project_states = ProjectStateRepository(app.state.db)
     app.state.project_state_repository = project_states
+    projects = ProjectRepository(app.state.db)
+    app.state.project_repository = projects
     embeddings = get_embedding_service()
     runner = JobRunner()
     app.state.job_runner = runner
@@ -76,6 +79,7 @@ async def lifespan(app: FastAPI):
                 reasoner=create_provider("reasoner"),
                 relations=relations,
                 project_states=project_states,
+                projects=projects,
             ),
         ),
     )
