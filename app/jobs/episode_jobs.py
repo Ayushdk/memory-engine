@@ -101,12 +101,17 @@ async def process_episode(
     vector_store=None,
     embeddings=None,
     reasoner: LLMProvider | None = None,
+    relations=None,
+    project_states=None,
 ) -> None:
     """The full close pipeline: summarize, fold into the project's workspace,
-    then evolve the Project Brain from that workspace's updated understanding
-    (episodes without a project still get summarized; extraction is skipped
-    unless the memory/vector/embedding args are supplied)."""
+    evolve the Project Brain from that workspace's updated understanding,
+    then let reflection keep the Project Brain clean and (when it changed
+    something) refresh the Project State. Episodes without a project still
+    get summarized; each downstream stage is skipped unless its dependencies
+    are supplied."""
     from app.jobs.extraction_jobs import extract_semantic_memories
+    from app.jobs.reflection_jobs import reflect_project, synthesize_project_state
     from app.jobs.workspace_jobs import update_workspace
 
     await summarize_episode(episode_id, episodes, working_memory, summarizer)
@@ -115,6 +120,12 @@ async def process_episode(
         await update_workspace(episode.project_id, episode, workspaces, summarizer)
         if memories is not None and vector_store is not None and embeddings is not None:
             workspace = workspaces.get(episode.project_id)
-            await extract_semantic_memories(
+            extracted = await extract_semantic_memories(
                 episode.project_id, workspace, episode, memories, vector_store, embeddings, reasoner
             )
+            if relations is not None and project_states is not None:
+                changed = await reflect_project(
+                    episode.project_id, memories, vector_store, embeddings, relations, reasoner
+                )
+                if extracted or changed.merged or changed.superseded or changed.strengthened:
+                    await synthesize_project_state(episode.project_id, memories, project_states, reasoner)

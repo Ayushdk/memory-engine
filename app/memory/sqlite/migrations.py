@@ -49,6 +49,20 @@ MIGRATIONS: list[str] = [
     CREATE INDEX IF NOT EXISTS idx_workspace_archives_project
         ON workspace_archives (project_id, archived_at);
     """,
+    # 3 — project state: versioned, synthesized snapshots of a project's
+    # active knowledge (intelligence-layer.md §7). Never overwritten.
+    """
+    CREATE TABLE IF NOT EXISTS project_states (
+        id                  TEXT PRIMARY KEY,
+        project_id          TEXT NOT NULL,
+        version             INTEGER NOT NULL,
+        content             TEXT NOT NULL,
+        generated_from_json TEXT NOT NULL DEFAULT '[]',
+        created_at          TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_project_states_project
+        ON project_states (project_id, version DESC);
+    """,
 ]
 
 

@@ -9,6 +9,7 @@ from app.api.routes import (
     episode_routes,
     health_routes,
     memory_routes,
+    project_state_routes,
     workspace_routes,
 )
 from app.api.security import require_token
@@ -38,6 +39,7 @@ def create_app() -> FastAPI:
     app.include_router(context_routes.router, prefix=API_PREFIX, dependencies=guarded)
     app.include_router(episode_routes.router, prefix=API_PREFIX, dependencies=guarded)
     app.include_router(workspace_routes.router, prefix=API_PREFIX, dependencies=guarded)
+    app.include_router(project_state_routes.router, prefix=API_PREFIX, dependencies=guarded)
     register_error_handlers(app)
     return app
 

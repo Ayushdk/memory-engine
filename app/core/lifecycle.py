@@ -14,7 +14,9 @@ from app.engine.llm.provider import create_provider
 from app.jobs.episode_jobs import process_episode
 from app.jobs.job_runner import JobRunner
 from app.memory.repositories.episode_repository import EpisodeRepository
+from app.memory.repositories.memory_relation_repository import MemoryRelationRepository
 from app.memory.repositories.memory_repository import MemoryRepository
+from app.memory.repositories.project_state_repository import ProjectStateRepository
 from app.memory.repositories.working_memory_repository import WorkingMemoryRepository
 from app.memory.repositories.workspace_repository import WorkspaceRepository
 from app.memory.sqlite.connection import create_connection
@@ -52,6 +54,9 @@ async def lifespan(app: FastAPI):
     app.state.memory_repository = memories
     vector_store = ChromaVectorStore()
     app.state.vector_store = vector_store
+    relations = MemoryRelationRepository(app.state.db)
+    project_states = ProjectStateRepository(app.state.db)
+    app.state.project_state_repository = project_states
     embeddings = get_embedding_service()
     runner = JobRunner()
     app.state.job_runner = runner
@@ -69,6 +74,8 @@ async def lifespan(app: FastAPI):
                 vector_store=vector_store,
                 embeddings=embeddings,
                 reasoner=create_provider("reasoner"),
+                relations=relations,
+                project_states=project_states,
             ),
         ),
     )

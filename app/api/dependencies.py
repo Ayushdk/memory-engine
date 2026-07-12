@@ -58,6 +58,11 @@ def get_episode_tracker(request: Request):
     return request.app.state.episode_tracker
 
 
+def get_project_state_repository(request: Request):
+    # Built by the lifespan (shared with the reflection job).
+    return request.app.state.project_state_repository
+
+
 def get_episode_repository(request: Request):
     state = request.app.state
     if getattr(state, "episode_repository", None) is None:
