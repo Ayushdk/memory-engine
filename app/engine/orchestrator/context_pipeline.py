@@ -84,19 +84,15 @@ class ContextPipeline:
         workspace = None
         if project_id and self._workspaces:
             workspace = self._workspaces.get(project_id).transfer_summary or None
-        # The rolling Current Context Summary is the canonical conversation
-        # state — always included on sync, never gated by include_brain.
-        # Cross-AI handoff: a brand-new chat (switched platform, or just
-        # opened) has no summary of its own yet — fall back to the most
-        # recently active OTHER session's summary so switching where you
-        # talk doesn't lose where you left off.
+        # Sync means "continue whatever I worked on last" — not "continue
+        # this session". So the rolling Current Context Summary is always
+        # the most recently updated one across ALL sessions/platforms,
+        # never scoped to the requesting session_id.
         conversation_summary = None
         if self._conversation_summaries:
-            conversation_summary = self._conversation_summaries.get(session_id).summary or None
-            if not conversation_summary:
-                since = utc_now() - timedelta(minutes=get_settings().recap_freshness_minutes)
-                other = self._conversation_summaries.latest_other(session_id, since=since)
-                conversation_summary = other.summary if other else None
+            since = utc_now() - timedelta(minutes=get_settings().recap_freshness_minutes)
+            latest = self._conversation_summaries.latest(since=since)
+            conversation_summary = latest.summary if latest else None
         return self._assemble(
             session_id, retrieval, project_id, recent_conversation=recap, workspace=workspace,
             conversation_summary=conversation_summary, include_brain=include_brain,

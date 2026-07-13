@@ -30,16 +30,15 @@ class ConversationSummaryRepository:
             updated_at=datetime.fromisoformat(row["updated_at"]),
         )
 
-    def latest_other(self, exclude_session_id: str, since: datetime) -> ConversationSummary | None:
-        """Most recently updated non-empty summary from a DIFFERENT session,
-        no older than `since` — cross-AI handoff: a brand-new chat has no
-        summary of its own yet, so Sync there carries forward whatever the
-        user was just doing elsewhere instead of coming up empty."""
+    def latest(self, since: datetime) -> ConversationSummary | None:
+        """Most recently updated non-empty summary across ALL sessions, no
+        older than `since` — Sync means "continue whatever I worked on last",
+        not "continue this session", so platform/session is irrelevant here."""
         row = self._conn.execute(
             "SELECT * FROM conversation_summaries "
-            "WHERE session_id != ? AND summary != '' AND updated_at >= ? "
+            "WHERE summary != '' AND updated_at >= ? "
             "ORDER BY updated_at DESC LIMIT 1",
-            (exclude_session_id, since.isoformat()),
+            (since.isoformat(),),
         ).fetchone()
         if row is None:
             return None

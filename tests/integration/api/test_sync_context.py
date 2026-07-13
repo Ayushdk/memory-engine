@@ -251,3 +251,33 @@ def test_sync_falls_back_to_the_latest_other_session_summary_for_a_brand_new_cha
         pack = sync(client, include_brain=False, session_id="claude-b")
 
     assert pack["sections"]["conversation_summary"] == "Decided SQLite, mid-refactor."
+
+
+def test_sync_injects_the_latest_work_regardless_of_which_session_asks(
+    repo, vector_store, db_conn,
+):
+    # Sync means "continue whatever I worked on last" — even a session with
+    # its OWN summary must yield to a more recently updated one elsewhere.
+    from app.models.domain.conversation_summary import ConversationSummary
+
+    conversation_summaries = ConversationSummaryRepository(db_conn)
+    conversation_summaries.save(
+        ConversationSummary(session_id="gemini-c", summary="Old topic: TRACE-Lite.")
+    )
+    conversation_summaries.save(
+        ConversationSummary(session_id="claude-b", summary="Latest topic: OpenMemory.")
+    )
+    pipeline = ContextPipeline(
+        retrieval_engine=RetrievalEngine(FakeEmbedder(), vector_store, repo),
+        ranking_engine=RankingEngine(),
+        context_builder=ContextBuilder(),
+        repository=repo,
+        conversation_summary_repository=conversation_summaries,
+    )
+    app = create_app()
+    app.dependency_overrides[get_context_pipeline] = lambda: pipeline
+    with TestClient(app) as client:
+        # A brand-new Gemini chat asks — but Claude's is the freshest work.
+        pack = sync(client, include_brain=False, session_id="gemini-new")
+
+    assert pack["sections"]["conversation_summary"] == "Latest topic: OpenMemory."
