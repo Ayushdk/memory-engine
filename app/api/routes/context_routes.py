@@ -1,8 +1,10 @@
 """Context routes — transport only. Validate, resolve dependencies, delegate."""
 
+import time
 from typing import Annotated
 
 from fastapi import APIRouter, Depends
+from loguru import logger
 
 from app.api.dependencies import (
     get_context_pipeline,
@@ -52,14 +54,56 @@ async def context(
         # pack we build below always reflects this episode, never a stale
         # workspace — the background job (enqueued by the tracker's on_close)
         # redoes the same call, which is a no-op by the time it runs.
-        episode = tracker.end_episode(request.session_id, "sync")
-        if episode is not None:
-            await summarize_and_update_workspace(
-                episode.id, episodes, working_memory, workspaces, create_provider("summarizer"),
-                projects=projects, raw_messages=raw_messages,
-                conversation_summaries=conversation_summaries,
+        #
+        # This inline path can chain up to three sequential local-LLM calls
+        # (episode summary, workspace update, conversation summary) before a
+        # response goes out — slow enough on local Ollama to blow past a
+        # client's request timeout even though the backend finishes fine.
+        # Stage timing is logged so a slow step is visible without guessing.
+        t0 = time.monotonic()
+        logger.info("sync: request received session={}", request.session_id)
+        try:
+            episode = tracker.end_episode(request.session_id, "sync")
+            logger.info(
+                "sync: end_episode done episode={} elapsed={:.2f}s",
+                episode.id if episode else None, time.monotonic() - t0,
             )
-        return pipeline.build_sync_context(
-            request.session_id, request.project_id, include_brain=request.include_brain
+
+            if episode is not None:
+                t1 = time.monotonic()
+                await summarize_and_update_workspace(
+                    episode.id, episodes, working_memory, workspaces,
+                    create_provider("summarizer"),
+                    projects=projects, raw_messages=raw_messages,
+                    conversation_summaries=conversation_summaries,
+                )
+                logger.info(
+                    "sync: summarize_and_update_workspace done elapsed={:.2f}s "
+                    "total_elapsed={:.2f}s",
+                    time.monotonic() - t1, time.monotonic() - t0,
+                )
+
+            t2 = time.monotonic()
+            pack = pipeline.build_sync_context(
+                request.session_id, request.project_id, include_brain=request.include_brain
+            )
+            logger.info(
+                "sync: build_sync_context done elapsed={:.2f}s total_elapsed={:.2f}s",
+                time.monotonic() - t2, time.monotonic() - t0,
+            )
+        except Exception:
+            logger.exception(
+                "sync: failed after {:.2f}s session={}",
+                time.monotonic() - t0, request.session_id,
+            )
+            raise
+
+        # FastAPI serializes `pack` (response_model=ContextPack) and returns
+        # HTTP 200 after this point — logged here so "did the backend ever
+        # actually respond" is answered by the log, not inferred.
+        logger.info(
+            "sync: returning HTTP 200 session={} total_elapsed={:.2f}s",
+            request.session_id, time.monotonic() - t0,
         )
+        return pack
     return pipeline.build_context(request.session_id, request.query, request.project_id)

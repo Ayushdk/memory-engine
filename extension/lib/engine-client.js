@@ -65,13 +65,20 @@ export class EngineClient {
     });
   }
 
-  /** State-driven Sync Context pack (no query). */
+  /**
+   * State-driven Sync Context pack (no query). Sync closes the episode
+   * inline, which chains up to three sequential local-LLM calls (episode
+   * summary, workspace update, conversation summary) before responding —
+   * on local Ollama that routinely exceeds the default request timeout, so
+   * this gets its own, much longer budget instead of inheriting it.
+   */
   async getSyncContext({ sessionId, projectId = null }) {
-    return this._request("POST", "/api/v1/context", {
-      session_id: sessionId,
-      mode: "sync",
-      project_id: projectId,
-    });
+    return this._request(
+      "POST",
+      "/api/v1/context",
+      { session_id: sessionId, mode: "sync", project_id: projectId },
+      { timeoutMs: Math.max(this.timeoutMs, 90000) },
+    );
   }
 
   /** @param {object} [filters] - view/projectId/category/status/limit */
@@ -103,7 +110,7 @@ export class EngineClient {
     return this._request("POST", `/api/v1/workspace/${encodeURIComponent(projectId)}/archive`);
   }
 
-  async _request(method, path, body = undefined) {
+  async _request(method, path, body = undefined, { timeoutMs = this.timeoutMs } = {}) {
     const headers = {};
     if (body !== undefined) headers["Content-Type"] = "application/json";
     if (this.token) headers["Authorization"] = `Bearer ${this.token}`;
@@ -114,7 +121,7 @@ export class EngineClient {
         method,
         headers,
         body: body !== undefined ? JSON.stringify(body) : undefined,
-        signal: AbortSignal.timeout(this.timeoutMs),
+        signal: AbortSignal.timeout(timeoutMs),
       });
     } catch (cause) {
       throw new EngineError(`engine unreachable at ${this.baseUrl}`, 0, cause);
