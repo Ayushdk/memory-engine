@@ -91,6 +91,12 @@ async def context(
                 "sync: build_sync_context done elapsed={:.2f}s total_elapsed={:.2f}s",
                 time.monotonic() - t2, time.monotonic() - t0,
             )
+            logger.debug("sync: full ContextPack session={} pack={}", request.session_id, pack.model_dump_json())
+            logger.info(
+                "sync: conversation_summary populated={} chars={}",
+                bool(pack.sections.conversation_summary),
+                len(pack.sections.conversation_summary or ""),
+            )
         except Exception:
             logger.exception(
                 "sync: failed after {:.2f}s session={}",
