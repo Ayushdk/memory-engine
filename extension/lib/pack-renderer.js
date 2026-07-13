@@ -73,16 +73,13 @@ export function renderPack(pack) {
     );
   }
 
-  const recap = sections.recent_conversation;
-  if (recap?.messages?.length) {
-    const when = recap.minutes_ago === 0 ? "moments ago" : `${recap.minutes_ago} min ago`;
-    parts.push(
-      [
-        `## Recent conversation (on ${recap.platform}, ${when})`,
-        "_Excerpt from the user's latest session with another assistant — continue from here._",
-        ...recap.messages.map((m) => `> ${m}`),
-      ].join("\n"),
-    );
+  // The rolling Conversation Summary is the canonical conversation state —
+  // the compressed, up-to-date record of the whole conversation, not just a
+  // recent excerpt. `recent_conversation` (the old per-message recap) is
+  // still in the pack JSON for debugging, but is deliberately never
+  // rendered into the injected prompt.
+  if (sections.conversation_summary) {
+    parts.push(`## Conversation summary\n${sections.conversation_summary}`);
   }
 
   if (parts.length === 0) return "";

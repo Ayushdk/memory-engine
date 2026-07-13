@@ -67,6 +67,9 @@ export function createScanner({ adapter, detectPlatform, sendMessage, seenStore 
       let sent = 0;
       try {
         for (const message of fresh) {
+          console.debug(
+            `[OpenMemory] captured ${message.role} message, len=${message.content.length}`,
+          );
           const reply = await sendMessage({
             type: "ingest",
             payload: {

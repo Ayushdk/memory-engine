@@ -98,11 +98,17 @@ async def update_conversation_summary(
         summary = ""
         if provider is not None:
             try:
+                transcript = transcript_of(unsummarized)
                 prompt = PROMPT_TEMPLATE.format(
                     previous_summary=previous or "(none yet — this is the first summary)",
-                    transcript=transcript_of(unsummarized),
+                    transcript=transcript,
                     # ~0.75 words per token is the usual rule of thumb
                     word_budget=int(settings.conversation_summary_token_budget * 0.75),
+                )
+                logger.debug(
+                    "conversation_summary input session={} messages={} transcript_chars={} "
+                    "prompt_chars={}",
+                    session_id, len(unsummarized), len(transcript), len(prompt),
                 )
                 result = await provider.generate(prompt, SUMMARY_SCHEMA)
                 summary = result["summary"].strip()

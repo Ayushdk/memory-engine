@@ -6,6 +6,8 @@ so an engine restart loses nothing.
 
 from typing import Literal
 
+from loguru import logger
+
 from app.engine.working_memory.working_memory_manager import WorkingMemoryManager
 from app.memory.repositories.raw_message_repository import RawMessageRepository
 from app.memory.repositories.session_repository import SessionRepository
@@ -47,6 +49,10 @@ class PersistentWorkingMemory:
             self._raw_messages.append(
                 session_id, role, content, project_id=project_id, platform=platform,
                 timestamp=message.timestamp,
+            )
+            logger.debug(
+                "raw_messages.append session={} role={} stored_len={}",
+                session_id, role, len(content),
             )
         return message
 

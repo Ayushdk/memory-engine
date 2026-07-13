@@ -12,9 +12,17 @@ import httpx
 import jsonschema
 
 from app.engine.llm.provider import ProviderError, ProviderHealth
+from app.services.tokenizer_service import estimate_tokens
 
 # Health probes must answer fast even when generation timeouts are generous.
 HEALTH_TIMEOUT_SECONDS = 3.0
+
+# ponytail: Ollama defaults num_ctx to 2048 and silently drops whatever
+# doesn't fit — no error, just a quietly truncated prompt (this is what made
+# long assistant turns vanish from the rolling conversation summary even
+# though the full text was stored correctly). Size the context window to the
+# actual prompt instead of trusting the server default.
+MIN_NUM_CTX = 4096
 
 
 class OllamaProvider:
@@ -46,7 +54,12 @@ class OllamaProvider:
                         "format": output_schema,
                         "stream": False,
                         # extraction must be repeatable, not creative
-                        "options": {"temperature": 0},
+                        "options": {
+                            "temperature": 0,
+                            # size to the actual prompt — Ollama's 2048-token
+                            # default silently drops overflow instead of erroring
+                            "num_ctx": max(MIN_NUM_CTX, estimate_tokens(prompt) + 512),
+                        },
                     },
                 )
                 response.raise_for_status()

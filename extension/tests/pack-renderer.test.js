@@ -14,6 +14,7 @@ function pack(sections = {}) {
       relevant_memories: [],
       open_questions: [],
       recent_conversation: null,
+      conversation_summary: null,
       ...sections,
     },
   };
@@ -33,6 +34,7 @@ const FULL = pack({
     minutes_ago: 3,
     messages: ["User: The tricky part is retrieval.", "Assistant: Agreed, ranking needs recency."],
   },
+  conversation_summary: "Decided SQLite as the source of truth; ranking engine mid-refactor.",
 });
 
 describe("full pack", () => {
@@ -50,7 +52,7 @@ describe("full pack", () => {
       "## About the user",
       "## Key memories",
       "## Open questions",
-      "## Recent conversation",
+      "## Conversation summary",
     ].map((h) => text.indexOf(h));
     expect(order.every((i) => i >= 0)).toBe(true);
     expect([...order].sort((a, b) => a - b)).toEqual(order);
@@ -66,10 +68,15 @@ describe("full pack", () => {
     expect(text).not.toContain("We use SQLite as source of truth. _(confidence");
   });
 
-  it("labels the recap with platform and age and quotes the dialogue", () => {
-    expect(text).toContain("## Recent conversation (on chatgpt, 3 min ago)");
-    expect(text).toContain("> User: The tricky part is retrieval.");
-    expect(text).toContain("continue from here");
+  it("renders the rolling conversation summary as the conversation context", () => {
+    expect(text).toContain(
+      "## Conversation summary\nDecided SQLite as the source of truth; ranking engine mid-refactor.",
+    );
+  });
+
+  it("never injects the legacy per-message recap, even when present in the pack", () => {
+    expect(text).not.toContain("## Recent conversation");
+    expect(text).not.toContain("User: The tricky part is retrieval.");
   });
 });
 
@@ -89,13 +96,13 @@ describe("partial and empty packs", () => {
     expect(renderPack(null)).toBe("");
   });
 
-  it("says 'moments ago' for a zero-minute recap", () => {
+  it("ignores recent_conversation entirely, even without a conversation_summary", () => {
     const text = renderPack(
       pack({
         recent_conversation: { platform: "chatgpt", minutes_ago: 0, messages: ["User: hi there"] },
       }),
     );
-    expect(text).toContain("(on chatgpt, moments ago)");
+    expect(text).toBe("");
   });
 
   it("falls back to the raw category for unknown categories", () => {
