@@ -55,11 +55,11 @@ def seed(repo, content, category=MemoryCategory.DECISION, importance=9, **overri
     return memory
 
 
-def sync(client, project_id=None, include_brain=False):
+def sync(client, project_id=None, include_brain=False, session_id="s1"):
     r = client.post(
         CONTEXT,
         json={
-            "session_id": "s1", "mode": "sync", "project_id": project_id,
+            "session_id": session_id, "mode": "sync", "project_id": project_id,
             "include_brain": include_brain,
         },
     )
@@ -224,3 +224,30 @@ def test_sync_always_includes_rolling_conversation_summary(repo, vector_store, d
         pack = sync(client, include_brain=False)
 
     assert pack["sections"]["conversation_summary"] == "Chose SQLite."
+
+
+def test_sync_falls_back_to_the_latest_other_session_summary_for_a_brand_new_chat(
+    repo, vector_store, db_conn,
+):
+    # Cross-AI handoff: switching platforms (or opening a fresh chat) lands
+    # on a session with no summary of its own — Sync there must still carry
+    # forward the most recent OTHER session's summary, not come up empty.
+    from app.models.domain.conversation_summary import ConversationSummary
+
+    conversation_summaries = ConversationSummaryRepository(db_conn)
+    conversation_summaries.save(
+        ConversationSummary(session_id="chatgpt-a", summary="Decided SQLite, mid-refactor.")
+    )
+    pipeline = ContextPipeline(
+        retrieval_engine=RetrievalEngine(FakeEmbedder(), vector_store, repo),
+        ranking_engine=RankingEngine(),
+        context_builder=ContextBuilder(),
+        repository=repo,
+        conversation_summary_repository=conversation_summaries,
+    )
+    app = create_app()
+    app.dependency_overrides[get_context_pipeline] = lambda: pipeline
+    with TestClient(app) as client:
+        pack = sync(client, include_brain=False, session_id="claude-b")
+
+    assert pack["sections"]["conversation_summary"] == "Decided SQLite, mid-refactor."

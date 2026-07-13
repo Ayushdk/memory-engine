@@ -30,6 +30,25 @@ class ConversationSummaryRepository:
             updated_at=datetime.fromisoformat(row["updated_at"]),
         )
 
+    def latest_other(self, exclude_session_id: str, since: datetime) -> ConversationSummary | None:
+        """Most recently updated non-empty summary from a DIFFERENT session,
+        no older than `since` — cross-AI handoff: a brand-new chat has no
+        summary of its own yet, so Sync there carries forward whatever the
+        user was just doing elsewhere instead of coming up empty."""
+        row = self._conn.execute(
+            "SELECT * FROM conversation_summaries "
+            "WHERE session_id != ? AND summary != '' AND updated_at >= ? "
+            "ORDER BY updated_at DESC LIMIT 1",
+            (exclude_session_id, since.isoformat()),
+        ).fetchone()
+        if row is None:
+            return None
+        return ConversationSummary(
+            session_id=row["session_id"],
+            summary=row["summary"],
+            updated_at=datetime.fromisoformat(row["updated_at"]),
+        )
+
     def save(self, summary: ConversationSummary, commit: bool = True) -> None:
         sql = (
             "INSERT OR REPLACE INTO conversation_summaries (session_id, summary, updated_at) "
