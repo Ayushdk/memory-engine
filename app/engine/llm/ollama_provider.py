@@ -43,14 +43,19 @@ class OllamaProvider:
     def _client(self, timeout: float) -> httpx.AsyncClient:
         return httpx.AsyncClient(timeout=timeout, transport=self._transport)
 
-    async def generate(self, prompt: str, output_schema: dict) -> dict:
+    async def generate(
+        self, prompt: str, output_schema: dict, system: str | None = None
+    ) -> dict:
+        messages = ([{"role": "system", "content": system}] if system else []) + [
+            {"role": "user", "content": prompt}
+        ]
         try:
             async with self._client(self._timeout) as client:
                 response = await client.post(
                     f"{self._url}/api/chat",
                     json={
                         "model": self._model,
-                        "messages": [{"role": "user", "content": prompt}],
+                        "messages": messages,
                         "format": output_schema,
                         "stream": False,
                         # extraction must be repeatable, not creative
@@ -58,7 +63,10 @@ class OllamaProvider:
                             "temperature": 0,
                             # size to the actual prompt — Ollama's 2048-token
                             # default silently drops overflow instead of erroring
-                            "num_ctx": max(MIN_NUM_CTX, estimate_tokens(prompt) + 512),
+                            "num_ctx": max(
+                                MIN_NUM_CTX,
+                                estimate_tokens(prompt) + estimate_tokens(system or "") + 512,
+                            ),
                         },
                     },
                 )

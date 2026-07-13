@@ -43,7 +43,9 @@ NO_PROVIDER = ProviderHealth(
 
 
 class LLMProvider(Protocol):
-    async def generate(self, prompt: str, output_schema: dict) -> dict:
+    async def generate(
+        self, prompt: str, output_schema: dict, system: str | None = None
+    ) -> dict:
         """Return a dict validated against output_schema, or raise ProviderError."""
         ...
 

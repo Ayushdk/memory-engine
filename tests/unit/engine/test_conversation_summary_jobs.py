@@ -7,7 +7,7 @@ import pytest
 from app.core.config import Settings
 from app.engine.llm.provider import ProviderError
 from app.jobs import conversation_summary_jobs
-from app.jobs.conversation_summary_jobs import update_conversation_summary
+from app.jobs.conversation_summary_jobs import SYSTEM_PROMPT, update_conversation_summary
 from app.memory.repositories.conversation_summary_repository import (
     ConversationSummaryRepository,
 )
@@ -19,9 +19,11 @@ class FakeProvider:
     def __init__(self, summary=None, error=None):
         self._summary, self._error = summary, error
         self.prompts = []
+        self.systems = []
 
-    async def generate(self, prompt, output_schema):
+    async def generate(self, prompt, output_schema, system=None):
         self.prompts.append(prompt)
+        self.systems.append(system)
         if self._error:
             raise ProviderError(self._error)
         return {"summary": self._summary}
@@ -51,6 +53,7 @@ async def test_llm_summary_is_stored_and_messages_marked(db_conn):
     assert conversation_summaries.get("s1").summary == "Decided SQLite."
     assert all(m.summarized for m in raw_messages.list("s1"))
     assert "let's use SQLite" in provider.prompts[0]
+    assert provider.systems[0] == SYSTEM_PROMPT
 
 
 async def test_chains_forward_over_previous_summary(db_conn):
@@ -124,7 +127,7 @@ async def test_concurrent_calls_for_the_same_session_never_lose_a_write(db_conn)
             self._summary = summary
             self.prompts = []
 
-        async def generate(self, prompt, output_schema):
+        async def generate(self, prompt, output_schema, system=None):
             self.prompts.append(prompt)
             entered_first.set()
             await release_first.wait()

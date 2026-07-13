@@ -51,7 +51,7 @@ class Settings(BaseSettings):
 
     # Episodes (intelligence-layer.md §4). Cap must stay below
     # working_memory_capacity so the buffer always holds a whole episode.
-    episode_max_messages: int = 25
+    episode_max_messages: int = 20
     episode_inactivity_minutes: int = 20
     episode_sweep_seconds: int = 60
 
@@ -65,7 +65,7 @@ class Settings(BaseSettings):
     # summarization — Summarize(previous summary + unsummarized raw
     # messages). This is the canonical state injected on Sync, separate
     # from workspace/project knowledge.
-    conversation_summary_token_budget: int = 400
+    conversation_summary_token_budget: int = 1500
 
     # Retrieval (architecture.md §4)
     retrieval_candidates: int = 40

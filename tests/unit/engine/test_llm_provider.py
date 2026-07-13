@@ -81,6 +81,27 @@ class TestGenerate:
         result = await provider.generate("extract", SCHEMA)
         assert result == {"memories": ["SQLite is the source of truth"]}
 
+    async def test_system_prompt_sent_as_its_own_message(self):
+        def handler(request):
+            body = json.loads(request.content)
+            assert body["messages"] == [
+                {"role": "system", "content": "be terse"},
+                {"role": "user", "content": "extract"},
+            ]
+            return httpx.Response(200, json={"message": {"content": '{"memories": []}'}})
+
+        provider = provider_with(handler)
+        await provider.generate("extract", SCHEMA, system="be terse")
+
+    async def test_no_system_message_when_system_is_none(self):
+        def handler(request):
+            body = json.loads(request.content)
+            assert body["messages"] == [{"role": "user", "content": "extract"}]
+            return httpx.Response(200, json={"message": {"content": '{"memories": []}'}})
+
+        provider = provider_with(handler)
+        await provider.generate("extract", SCHEMA)
+
     async def test_rejects_schema_violation(self):
         provider = provider_with(chat_reply('{"memories": "not a list"}'))
         with pytest.raises(ProviderError, match="schema validation"):

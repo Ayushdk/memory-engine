@@ -123,7 +123,7 @@ class DualSchemaFakeProvider:
         self._text = text
         self.prompts = []
 
-    async def generate(self, prompt, output_schema):
+    async def generate(self, prompt, output_schema, system=None):
         self.prompts.append(prompt)
         if "internal_summary" in output_schema["properties"]:
             return {
