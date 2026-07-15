@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { formatLastSync, render, shortenSession } from "../popup/render.js";
+import { CREATE_PROJECT_VALUE, formatLastSync, render, shortenSession } from "../popup/render.js";
 
 const popupHtml = readFileSync(
   join(dirname(fileURLToPath(import.meta.url)), "../popup/popup.html"),
@@ -52,7 +52,6 @@ describe("context card", () => {
     expect(text("platform")).toBe("ChatGPT");
     expect(text("session")).toBe(shortenSession(sessionId));
     expect(document.getElementById("session").title).toBe(sessionId);
-    expect(text("dbg-session")).toBe(sessionId); // debug shows the full id
   });
 
   it("handles a non-AI tab", () => {
@@ -61,9 +60,28 @@ describe("context card", () => {
     expect(text("session")).toBe("—");
   });
 
-  it("fills the project input from settings", () => {
+  it("selects the saved project even when the engine hasn't listed it yet", () => {
     render(document, state({ settings: { ...state().settings, projectId: "proj_om" } }));
     expect(document.getElementById("project").value).toBe("proj_om");
+  });
+});
+
+describe("project dropdown", () => {
+  it("lists no-project, every engine project, and the create option", () => {
+    render(
+      document,
+      state({
+        projects: [{ id: "proj_om", name: "OpenMemory" }, { id: "proj_tl", name: "TRACE-Lite" }],
+        settings: { ...state().settings, projectId: "proj_tl" },
+      }),
+    );
+    const select = document.getElementById("project");
+    const options = [...select.options].map((o) => [o.value, o.textContent]);
+    expect(options[0]).toEqual(["", "No project"]);
+    expect(options).toContainEqual(["proj_om", "OpenMemory"]);
+    expect(options).toContainEqual(["proj_tl", "TRACE-Lite"]);
+    expect(options.at(-1)[0]).toBe(CREATE_PROJECT_VALUE);
+    expect(select.value).toBe("proj_tl");
   });
 });
 

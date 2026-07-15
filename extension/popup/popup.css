@@ -182,13 +182,18 @@ body {
   font-weight: 600;
 }
 
-/* Capture toggle */
+/* Capture row: info | toggle | reset */
 .capture {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 12px;
   padding: 10px 12px;
+}
+.capture-info {
+  flex: 1;
+  min-width: 0;
+}
+.capture .switch {
   cursor: pointer;
 }
 .capture-title {
@@ -198,30 +203,6 @@ body {
 .capture-sub {
   display: block;
   font-size: 11px;
-}
-
-/* Debug */
-.debug {
-  border-radius: var(--radius-sm);
-}
-.debug summary {
-  cursor: pointer;
-  font-size: 11px;
-  padding: 2px 2px;
-  user-select: none;
-}
-.debug-grid {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 3px 12px;
-  margin: 8px 2px 2px;
-}
-.debug-grid dt {
-  color: var(--muted);
-}
-.debug-grid dd {
-  margin: 0;
-  overflow-wrap: anywhere;
 }
 
 /* Footer */
@@ -245,7 +226,4 @@ body {
   color: var(--text);
 }
 
-/* Workspace controls */
-.ws-actions { display: flex; gap: 6px; }
 .btn-sm { padding: 3px 10px; font-size: 12px; }
-.ws-hint { margin-top: 6px; }

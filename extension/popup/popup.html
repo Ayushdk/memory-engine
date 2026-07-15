@@ -61,7 +61,9 @@
         </div>
         <div class="row row-project">
           <span class="row-label">Project</span>
-          <input class="input input-inline" id="project" placeholder="none" spellcheck="false" />
+          <select class="input input-inline" id="project">
+            <option value="">No project</option>
+          </select>
         </div>
       </section>
 
@@ -76,41 +78,18 @@
         </div>
       </section>
 
-      <label class="capture card">
-        <div>
+      <section class="capture card">
+        <div class="capture-info">
           <span class="capture-title">Memory capture</span>
           <span class="capture-sub muted" id="capture-sub">Remembering this conversation</span>
         </div>
-        <span class="switch">
+        <label class="switch">
           <input type="checkbox" id="capture-toggle" checked />
           <span class="track"></span>
-        </span>
-      </label>
-
-      <section class="card workspace">
-        <div class="row">
-          <span class="row-label">Workspace</span>
-          <span class="ws-actions">
-            <button class="btn btn-ghost btn-sm" id="ws-archive"
-                    title="Snapshot the working state, then start fresh">Archive</button>
-            <button class="btn btn-ghost btn-sm" id="ws-reset"
-                    title="Clear the working state without keeping a snapshot">Reset</button>
-          </span>
-        </div>
-        <p class="hint muted ws-hint" id="ws-hint">Working state updates as you chat.</p>
+        </label>
+        <button class="btn btn-ghost btn-sm" id="capture-reset"
+                title="Discard the current unsynced capture and reset the counter">Reset</button>
       </section>
-
-      <details class="debug">
-        <summary class="muted">Debug</summary>
-        <dl class="debug-grid mono">
-          <dt>Engine</dt><dd id="dbg-engine">—</dd>
-          <dt>Version</dt><dd id="dbg-version">—</dd>
-          <dt>Session</dt><dd id="dbg-session">—</dd>
-          <dt>Project</dt><dd id="dbg-project">—</dd>
-          <dt>Ingested</dt><dd id="dbg-ingested">—</dd>
-          <dt>Last sync</dt><dd id="dbg-sync">—</dd>
-        </dl>
-      </details>
     </main>
 
     <footer class="footer">

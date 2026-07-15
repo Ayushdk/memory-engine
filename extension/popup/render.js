@@ -8,9 +8,12 @@
  * @param {{projectId: string, paused: boolean, engineUrl: string}} state.settings
  * @param {{ingested: number, lastSyncAt: string|null}} state.stats
  * @param {{platform: string, label: string, sessionId: string|null}|null} state.tab
+ * @param {{id: string, name: string}[]} [state.projects] - known engine projects
  */
+export const CREATE_PROJECT_VALUE = "__create__";
+
 export function render(doc, state) {
-  const { engine, settings, stats, tab } = state;
+  const { engine, settings, stats, tab, projects = [] } = state;
   const $ = (id) => doc.getElementById(id);
 
   // Engine status pill
@@ -37,23 +40,11 @@ export function render(doc, state) {
   const session = $("session");
   session.textContent = tab?.sessionId ? shortenSession(tab.sessionId) : "—";
   session.title = tab?.sessionId ?? "";
-  if ($("project") !== doc.activeElement) {
-    $("project").value = settings.projectId ?? "";
-  }
+  renderProjectOptions($("project"), projects, settings.projectId ?? "", doc);
 
   // Stats
   $("stat-ingested").textContent = String(stats.ingested);
   $("stat-sync").textContent = formatLastSync(stats.lastSyncAt);
-
-  // Workspace controls — need a live engine and a selected project
-  const workspaceReady = engine.connected && Boolean(settings.projectId);
-  $("ws-archive").disabled = !workspaceReady;
-  $("ws-reset").disabled = !workspaceReady;
-  if (!$("ws-hint").className.includes("ok") && !$("ws-hint").className.includes("err")) {
-    $("ws-hint").textContent = workspaceReady
-      ? "Working state updates as you chat."
-      : "Connect the engine and pick a project.";
-  }
 
   // Capture toggle
   $("capture-toggle").checked = !settings.paused;
@@ -64,14 +55,30 @@ export function render(doc, state) {
       : "Active on supported AI chats";
 
   $("dashboard").disabled = !engine.connected;
+}
 
-  // Debug
-  $("dbg-engine").textContent = settings.engineUrl;
-  $("dbg-version").textContent = engine.version ?? "—";
-  $("dbg-session").textContent = tab?.sessionId ?? "—";
-  $("dbg-project").textContent = settings.projectId || "—";
-  $("dbg-ingested").textContent = String(stats.ingested);
-  $("dbg-sync").textContent = stats.lastSyncAt ?? "—";
+/**
+ * Rebuild the project dropdown: no-project + every known project + a
+ * "create new" entry. The selected project stays listed even if the engine
+ * hasn't seen work for it yet (it's created server-side on first episode).
+ */
+function renderProjectOptions(select, projects, selectedId, doc) {
+  if (select === doc.activeElement) return; // don't yank an open dropdown
+  const ids = projects.map((p) => p.id);
+  if (selectedId && !ids.includes(selectedId)) {
+    projects = [...projects, { id: selectedId, name: selectedId }];
+  }
+  select.textContent = "";
+  const add = (value, label) => {
+    const option = doc.createElement("option");
+    option.value = value;
+    option.textContent = label;
+    select.append(option);
+  };
+  add("", "No project");
+  for (const project of projects) add(project.id, project.name);
+  add(CREATE_PROJECT_VALUE, "＋ Create new project…");
+  select.value = selectedId;
 }
 
 /**

@@ -47,12 +47,13 @@ export function createCore({
   const handlers = {
     /** Everything the popup needs to render, in one round trip. */
     async status() {
-      const [settings, stats, engine] = await Promise.all([
+      const [settings, stats, engine, projects] = await Promise.all([
         loadSettings(local),
         getStats(),
         probeEngine(),
+        getClient().then((client) => client.listProjects()).catch(() => []),
       ]);
-      return { settings, stats, engine };
+      return { settings, stats, engine, projects };
     },
 
     /** Patch settings (popup: project/paused; options: url/token). */
@@ -125,21 +126,13 @@ export function createCore({
     },
 
     /**
-     * Workspace controls (popup). Project-scoped: uses the selected project.
-     * "reset" clears the working state; "archive" snapshots then clears.
+     * Popup Reset: discard the extension's current capture state — counter
+     * back to 0, stale errors cleared. Extension-local only: nothing already
+     * synced to the engine (summaries, brain, memories) is touched.
      */
-    async "workspace-action"({ action }) {
-      const settings = await loadSettings(local);
-      if (!settings.projectId) return { ok: false, error: "Pick a project first" };
-      try {
-        const client = await getClient();
-        if (action === "archive") await client.archiveWorkspace(settings.projectId);
-        else if (action === "reset") await client.resetWorkspace(settings.projectId);
-        else return { ok: false, error: `unknown workspace action: ${action}` };
-        return { ok: true };
-      } catch (error) {
-        return { ok: false, error: error.message };
-      }
+    async "reset-capture"() {
+      await session.set({ ...DEFAULT_STATS, lastSyncAt: (await getStats()).lastSyncAt });
+      return { ok: true };
     },
 
     /** Adapter selectors broke: surface it via the activity indicator. */

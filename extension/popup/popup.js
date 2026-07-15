@@ -1,7 +1,7 @@
 /** Popup glue: gather state → render → wire events. Logic lives in render.js. */
 
 import { detectPlatform } from "../lib/platforms.js";
-import { render } from "./render.js";
+import { CREATE_PROJECT_VALUE, render } from "./render.js";
 
 async function currentTab() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -49,23 +49,13 @@ document.getElementById("dashboard").addEventListener("click", async () => {
   await chrome.tabs.create({ url });
 });
 
-for (const [buttonId, action] of [["ws-archive", "archive"], ["ws-reset", "reset"]]) {
-  document.getElementById(buttonId).addEventListener("click", async () => {
-    if (action === "reset" && !confirm("Clear the current working state? (No snapshot is kept.)")) {
-      return;
-    }
-    const hint = document.getElementById("ws-hint");
-    hint.className = "hint muted ws-hint";
-    hint.textContent = action === "archive" ? "Archiving…" : "Resetting…";
-    const result = await chrome.runtime.sendMessage({ type: "workspace-action", action });
-    hint.className = result?.ok ? "hint ok ws-hint" : "hint err ws-hint";
-    hint.textContent = result?.ok
-      ? action === "archive"
-        ? "Workspace archived — starting fresh."
-        : "Workspace cleared."
-      : (result?.error ?? "Workspace action failed");
-  });
-}
+document.getElementById("capture-reset").addEventListener("click", async () => {
+  if (!confirm("Discard the current unsynced capture and reset the counter? Already-synced knowledge is untouched.")) {
+    return;
+  }
+  await chrome.runtime.sendMessage({ type: "reset-capture" });
+  refresh();
+});
 
 document.getElementById("capture-toggle").addEventListener("change", async (event) => {
   await chrome.runtime.sendMessage({
@@ -76,10 +66,13 @@ document.getElementById("capture-toggle").addEventListener("change", async (even
 });
 
 document.getElementById("project").addEventListener("change", async (event) => {
-  await chrome.runtime.sendMessage({
-    type: "set-settings",
-    patch: { projectId: event.target.value.trim() },
-  });
+  let projectId = event.target.value;
+  if (projectId === CREATE_PROJECT_VALUE) {
+    const name = prompt("New project name:")?.trim();
+    if (!name) return refresh(); // cancelled — snap back to the saved value
+    projectId = name;
+  }
+  await chrome.runtime.sendMessage({ type: "set-settings", patch: { projectId } });
   refresh();
 });
 

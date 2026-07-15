@@ -290,54 +290,43 @@ describe("sync message", () => {
   });
 });
 
-describe("workspace-action message", () => {
-  function workspaceCore({ projectId = "proj_x", fail = null } = {}) {
-    const calls = [];
-    const core = createCore({
-      local: fakeArea({ projectId }),
+describe("status projects", () => {
+  it("includes the engine's project list for the popup dropdown", async () => {
+    const factory = fakeClientFactory();
+    const projects = [{ id: "proj_x", name: "proj_x" }];
+    const withProjects = (options) => ({ ...factory(options), listProjects: async () => projects });
+    const status = await createCore({
+      local: fakeArea(),
       session: fakeArea(),
-      clientFactory: () => ({
-        async archiveWorkspace(id) {
-          calls.push(["archive", id]);
-          if (fail) throw fail;
-        },
-        async resetWorkspace(id) {
-          calls.push(["reset", id]);
-          if (fail) throw fail;
-        },
-      }),
+      clientFactory: withProjects,
+    }).handle({ type: "status" });
+    expect(status.projects).toEqual(projects);
+  });
+
+  it("degrades to an empty list when the engine can't list projects", async () => {
+    const status = await createCore({
+      local: fakeArea(),
+      session: fakeArea(),
+      clientFactory: fakeClientFactory(), // fake has no listProjects at all
+    }).handle({ type: "status" });
+    expect(status.projects).toEqual([]);
+  });
+});
+
+describe("reset-capture message", () => {
+  it("zeroes the counter and clears errors, but keeps lastSyncAt", async () => {
+    const session = fakeArea({
+      ingested: 42,
+      lastMemoryAt: "2026-07-05T10:05:00Z",
+      lastError: "boom",
+      lastErrorAt: "2026-07-05T10:06:00Z",
+      lastSyncAt: "2026-07-05T10:00:00Z",
     });
-    return { core, calls };
-  }
+    const core = createCore({ local: fakeArea(), session, clientFactory: fakeClientFactory() });
 
-  it("archives the workspace for the selected project", async () => {
-    const { core, calls } = workspaceCore();
-    expect(await core.handle({ type: "workspace-action", action: "archive" })).toEqual({ ok: true });
-    expect(calls).toEqual([["archive", "proj_x"]]);
-  });
+    expect(await core.handle({ type: "reset-capture" })).toEqual({ ok: true });
 
-  it("resets the workspace for the selected project", async () => {
-    const { core, calls } = workspaceCore();
-    expect(await core.handle({ type: "workspace-action", action: "reset" })).toEqual({ ok: true });
-    expect(calls).toEqual([["reset", "proj_x"]]);
-  });
-
-  it("requires a selected project", async () => {
-    const { core, calls } = workspaceCore({ projectId: "" });
-    const reply = await core.handle({ type: "workspace-action", action: "archive" });
-    expect(reply).toEqual({ ok: false, error: "Pick a project first" });
-    expect(calls).toHaveLength(0);
-  });
-
-  it("surfaces engine failures", async () => {
-    const { core } = workspaceCore({ fail: new Error("ECONNREFUSED") });
-    const reply = await core.handle({ type: "workspace-action", action: "reset" });
-    expect(reply).toEqual({ ok: false, error: "ECONNREFUSED" });
-  });
-
-  it("rejects unknown actions", async () => {
-    const { core } = workspaceCore();
-    const reply = await core.handle({ type: "workspace-action", action: "wat" });
-    expect(reply).toEqual({ ok: false, error: "unknown workspace action: wat" });
+    const status = await core.handle({ type: "status" });
+    expect(status.stats).toEqual({ ...DEFAULT_STATS, lastSyncAt: "2026-07-05T10:00:00Z" });
   });
 });

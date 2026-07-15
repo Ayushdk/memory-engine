@@ -97,6 +97,11 @@ export class EngineClient {
     return this._request("DELETE", `/api/v1/memories/${encodeURIComponent(memoryId)}`);
   }
 
+  /** Projects the engine has seen work for (popup project dropdown). */
+  async listProjects() {
+    return this._request("GET", "/api/v1/projects");
+  }
+
   /** Current working state of a project (summaries, goal, blockers). */
   async getWorkspace(projectId) {
     return this._request("GET", `/api/v1/workspace/${encodeURIComponent(projectId)}`);
