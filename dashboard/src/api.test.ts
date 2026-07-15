@@ -22,7 +22,7 @@ describe("request", () => {
   afterEach(() => vi.restoreAllMocks());
 
   it("attaches bearer token and base url", async () => {
-    const fetchMock = vi.spyOn(global, "fetch").mockResolvedValue(
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
       new Response(JSON.stringify({ status: "ok" }), { status: 200 }),
     );
     await api.health();
@@ -32,7 +32,7 @@ describe("request", () => {
   });
 
   it("throws ApiError on non-ok response", async () => {
-    vi.spyOn(global, "fetch").mockResolvedValue(new Response("nope", { status: 404 }));
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("nope", { status: 404 }));
     await expect(api.health()).rejects.toBeInstanceOf(ApiError);
   });
 });

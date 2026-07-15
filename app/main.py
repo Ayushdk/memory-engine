@@ -7,6 +7,7 @@ from fastapi.staticfiles import StaticFiles
 from app.api.error_handlers import register_error_handlers
 from app.api.routes import (
     context_routes,
+    dashboard_routes,
     episode_routes,
     health_routes,
     memory_routes,
@@ -40,6 +41,7 @@ def create_app() -> FastAPI:
     guarded = [Depends(require_token)]
     app.include_router(memory_routes.router, prefix=API_PREFIX, dependencies=guarded)
     app.include_router(context_routes.router, prefix=API_PREFIX, dependencies=guarded)
+    app.include_router(dashboard_routes.router, prefix=API_PREFIX, dependencies=guarded)
     app.include_router(episode_routes.router, prefix=API_PREFIX, dependencies=guarded)
     app.include_router(workspace_routes.router, prefix=API_PREFIX, dependencies=guarded)
     app.include_router(project_state_routes.router, prefix=API_PREFIX, dependencies=guarded)

@@ -83,11 +83,66 @@ export interface ContextPack {
   sections: {
     project_state: string | null;
     workspace: string | null;
+    conversation_summary?: string | null;
     profile: string[];
     relevant_memories: { category: string; summary: string; confidence: Confidence }[];
     open_questions: string[];
     recent_conversation: { platform: string; minutes_ago: number; messages: string[] } | null;
   };
+}
+
+export interface OverviewData {
+  engine_status: string;
+  current_platform: string | null;
+  current_session: string | null;
+  current_project: string | null;
+  memory_capture_status: string;
+  last_sync: string | null;
+  conversation_summary_status: string;
+  conversation_summary_updated_at: string | null;
+  total_projects: number;
+  total_memories: number;
+  total_conversations: number;
+  database_health: string;
+  embedding_model: string;
+  llm_model: string;
+}
+
+export interface CurrentContextData {
+  session_id: string | null;
+  conversation_summary: string;
+  last_updated: string | null;
+  word_count: number;
+  character_count: number;
+}
+
+export interface ProjectDashboardRow {
+  project: Project;
+  workspace_summary: string;
+  project_brain: string;
+  recent_conversations: Episode[];
+  important_memories: Memory[];
+  last_updated: string;
+}
+
+export interface SearchResults {
+  conversation_summaries: { session_id: string; summary: string; updated_at: string }[];
+  workspaces: {
+    project_id: string;
+    transfer_summary: string;
+    internal_summary: string;
+    updated_at: string;
+  }[];
+  memories: {
+    id: string;
+    content: string;
+    summary: string | null;
+    category: string;
+    view: string;
+    project_id: string | null;
+    updated_at: string;
+  }[];
+  projects: { id: string; name: string; status: string; updated_at: string }[];
 }
 
 const CONFIG_KEY = "openmemory.dashboard.config";
@@ -140,6 +195,14 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const api = {
   health: () => request<{ status: string }>("/health"),
+  overview: () => request<OverviewData>("/dashboard/overview"),
+  currentContext: (sessionId?: string) =>
+    request<CurrentContextData>(`/dashboard/current-context?${qs({ session_id: sessionId })}`),
+  projectDashboard: () => request<ProjectDashboardRow[]>("/dashboard/projects"),
+  dashboardSearch: (params: { q: string; project_id?: string }) =>
+    request<SearchResults>(`/dashboard/search?${qs(params)}`),
+  diagnostics: () => request<Record<string, unknown>>("/dashboard/diagnostics"),
+  settings: () => request<Record<string, unknown>>("/dashboard/settings"),
   listProjects: () => request<Project[]>("/projects"),
   listMemories: (params: { view?: MemoryView; project_id?: string; status?: MemoryStatus; limit?: number }) =>
     request<{ memories: Memory[]; count: number }>(`/memories?${qs(params)}`),

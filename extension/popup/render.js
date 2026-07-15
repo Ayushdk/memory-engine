@@ -63,6 +63,8 @@ export function render(doc, state) {
       ? "Remembering this conversation"
       : "Active on supported AI chats";
 
+  $("dashboard").disabled = !engine.connected;
+
   // Debug
   $("dbg-engine").textContent = settings.engineUrl;
   $("dbg-version").textContent = engine.version ?? "—";

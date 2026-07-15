@@ -4,21 +4,24 @@ import App from "./App";
 
 beforeEach(() => {
   localStorage.clear();
-  vi.spyOn(global, "fetch").mockResolvedValue(
+  vi.spyOn(globalThis, "fetch").mockResolvedValue(
     new Response(JSON.stringify([]), { status: 200 }),
   );
 });
 
 describe("App", () => {
-  it("renders all six nav tabs", async () => {
+  it("renders the dashboard navigation sections", async () => {
     render(<App />);
     for (const label of [
-      "Workspace",
-      "Project Brain",
-      "Personal Brain",
+      "Overview",
+      "Current Context",
+      "Projects",
+      "Memories",
       "Timeline",
-      "Project State",
-      "Generate Context",
+      "Search",
+      "Diagnostics",
+      "Settings",
+      "Preview Sync",
     ]) {
       expect(await screen.findByRole("button", { name: label })).toBeInTheDocument();
     }

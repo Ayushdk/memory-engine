@@ -42,6 +42,13 @@ document.getElementById("settings").addEventListener("click", () => {
   chrome.runtime.openOptionsPage();
 });
 
+document.getElementById("dashboard").addEventListener("click", async () => {
+  const status = await chrome.runtime.sendMessage({ type: "status" });
+  const base = status?.settings?.engineUrl ?? "http://127.0.0.1:8765";
+  const url = new URL("/dashboard", base).toString();
+  await chrome.tabs.create({ url });
+});
+
 for (const [buttonId, action] of [["ws-archive", "archive"], ["ws-reset", "reset"]]) {
   document.getElementById(buttonId).addEventListener("click", async () => {
     if (action === "reset" && !confirm("Clear the current working state? (No snapshot is kept.)")) {

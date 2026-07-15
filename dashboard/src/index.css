@@ -1,128 +1,291 @@
 :root {
   color-scheme: light dark;
-  font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
-}
-
-body {
-  margin: 0;
+  font-family: Inter, ui-sans-serif, -apple-system, "Segoe UI", system-ui, sans-serif;
   background: Canvas;
   color: CanvasText;
 }
 
+body {
+  margin: 0;
+}
+
 .app {
-  display: flex;
-  flex-direction: column;
   min-height: 100vh;
 }
 
+.topbar,
+.tabs,
+main {
+  box-sizing: border-box;
+}
+
 .topbar {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto auto minmax(10rem, 16rem) minmax(10rem, 18rem) minmax(8rem, 14rem);
   align-items: center;
-  gap: 1rem;
-  padding: 0.75rem 1.25rem;
-  border-bottom: 1px solid color-mix(in srgb, CanvasText 15%, transparent);
-  flex-wrap: wrap;
+  gap: 0.75rem;
+  padding: 0.8rem 1rem;
+  border-bottom: 1px solid color-mix(in srgb, CanvasText 14%, transparent);
 }
 
 .topbar h1 {
-  font-size: 1rem;
   margin: 0;
-  white-space: nowrap;
+  font-size: 1rem;
 }
 
+.topbar input,
 .topbar select,
-.topbar input {
-  padding: 0.3rem 0.5rem;
+.toolbar input,
+.toolbar select {
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid color-mix(in srgb, CanvasText 22%, transparent);
+  border-radius: 6px;
+  background: Canvas;
+  color: CanvasText;
   font: inherit;
+  padding: 0.45rem 0.55rem;
 }
 
 .status-dot {
-  width: 0.6rem;
-  height: 0.6rem;
+  width: 0.65rem;
+  height: 0.65rem;
   border-radius: 50%;
-  display: inline-block;
 }
-.status-dot.ok { background: #2ea043; }
-.status-dot.bad { background: #d1242f; }
-.status-dot.unknown { background: #9a9a9a; }
 
-nav.tabs {
+.status-dot.ok { background: #17803d; }
+.status-dot.bad { background: #c9342f; }
+.status-dot.unknown { background: #777; }
+
+.tabs {
   display: flex;
-  gap: 0.25rem;
-  padding: 0 1.25rem;
-  border-bottom: 1px solid color-mix(in srgb, CanvasText 15%, transparent);
+  gap: 0.15rem;
   overflow-x: auto;
+  padding: 0 1rem;
+  border-bottom: 1px solid color-mix(in srgb, CanvasText 14%, transparent);
 }
 
-nav.tabs button {
-  background: none;
-  border: none;
-  padding: 0.6rem 0.9rem;
-  font: inherit;
-  cursor: pointer;
-  color: inherit;
-  opacity: 0.65;
+.tabs button {
+  border: 0;
   border-bottom: 2px solid transparent;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  opacity: 0.68;
+  padding: 0.7rem 0.85rem;
   white-space: nowrap;
 }
 
-nav.tabs button.active {
+.tabs button.active {
   opacity: 1;
   border-bottom-color: currentColor;
 }
 
 main {
-  flex: 1;
-  padding: 1.25rem;
-  max-width: 960px;
-  width: 100%;
+  width: min(1180px, 100%);
   margin: 0 auto;
-  box-sizing: border-box;
+  padding: 1rem;
 }
 
-.card {
+h2,
+h3 {
+  letter-spacing: 0;
+}
+
+.section-title,
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.8rem;
+}
+
+.section-title h2 {
+  margin: 0 auto 0 0;
+  font-size: 1.35rem;
+}
+
+.toolbar input {
+  flex: 1 1 18rem;
+}
+
+.toolbar select {
+  flex: 0 1 12rem;
+}
+
+.action {
+  border: 1px solid color-mix(in srgb, CanvasText 24%, transparent);
+  border-radius: 6px;
+  background: color-mix(in srgb, CanvasText 4%, transparent);
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  padding: 0.45rem 0.7rem;
+}
+
+.action:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.action:hover:not(:disabled),
+.link:hover {
+  background: color-mix(in srgb, CanvasText 8%, transparent);
+}
+
+.metric-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.metric-grid.compact {
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+
+.metric,
+.panel {
   border: 1px solid color-mix(in srgb, CanvasText 15%, transparent);
   border-radius: 8px;
+  background: color-mix(in srgb, CanvasText 2%, transparent);
+}
+
+.metric {
+  min-height: 4.4rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 0.8rem;
+}
+
+.metric span,
+.muted {
+  color: color-mix(in srgb, CanvasText 62%, transparent);
+  font-size: 0.9rem;
+}
+
+.metric strong {
+  font-size: 1.05rem;
+  overflow-wrap: anywhere;
+}
+
+.panel {
   padding: 1rem;
   margin-bottom: 1rem;
 }
 
-.muted { opacity: 0.65; font-size: 0.9em; }
+.split {
+  display: grid;
+  grid-template-columns: minmax(220px, 320px) 1fr;
+  gap: 1rem;
+  align-items: start;
+}
+
+.grow {
+  min-width: 0;
+}
+
+.project-list {
+  border: 1px solid color-mix(in srgb, CanvasText 15%, transparent);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.link {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  padding: 0.75rem;
+  text-align: left;
+}
+
+.active-link {
+  background: color-mix(in srgb, CanvasText 10%, transparent);
+}
+
+.block {
+  margin-top: 1rem;
+}
+
+.block h3,
+.panel h3 {
+  margin: 0 0 0.55rem;
+  font-size: 1rem;
+}
+
+.plain {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.plain li {
+  border-bottom: 1px solid color-mix(in srgb, CanvasText 10%, transparent);
+  padding: 0.55rem 0;
+}
+
+.plain li:last-child {
+  border-bottom: 0;
+}
 
 .badge {
   display: inline-block;
-  padding: 0.1rem 0.5rem;
+  margin-right: 0.35rem;
+  border: 1px solid color-mix(in srgb, CanvasText 20%, transparent);
   border-radius: 999px;
-  font-size: 0.75em;
-  border: 1px solid color-mix(in srgb, CanvasText 25%, transparent);
-  margin-right: 0.3rem;
+  padding: 0.08rem 0.45rem;
+  font-size: 0.78rem;
 }
 
-button.action {
-  font: inherit;
-  padding: 0.4rem 0.8rem;
-  border-radius: 6px;
-  border: 1px solid color-mix(in srgb, CanvasText 25%, transparent);
-  background: none;
-  color: inherit;
-  cursor: pointer;
+.pipeline {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+  gap: 0.5rem;
+  list-style: none;
+  margin: 0 0 1rem;
+  padding: 0;
 }
 
-button.action:hover { background: color-mix(in srgb, CanvasText 8%, transparent); }
+.pipeline li {
+  border: 1px solid color-mix(in srgb, CanvasText 15%, transparent);
+  border-radius: 8px;
+  padding: 0.65rem;
+  position: relative;
+}
 
-textarea, input[type="text"] {
-  font: inherit;
-  padding: 0.4rem;
-  width: 100%;
-  box-sizing: border-box;
+.error {
+  color: #c9342f;
 }
 
 pre {
+  margin: 0;
   white-space: pre-wrap;
   word-break: break-word;
+  font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+  line-height: 1.45;
 }
 
-.error { color: #d1242f; }
+@media (max-width: 760px) {
+  .topbar {
+    grid-template-columns: auto 1fr;
+  }
 
-ul.plain { list-style: none; padding: 0; margin: 0; }
-ul.plain li { padding: 0.4rem 0; border-bottom: 1px solid color-mix(in srgb, CanvasText 10%, transparent); }
+  .topbar select,
+  .topbar input {
+    grid-column: 1 / -1;
+  }
+
+  .split {
+    grid-template-columns: 1fr;
+  }
+}
