@@ -61,37 +61,74 @@ export default function App() {
     };
   }, [config.baseUrl, config.token]);
 
+  const pageLabel = NAV.find(([id]) => id === page)?.[1] ?? "";
+
   return (
     <div className="app">
-      <header className="topbar">
-        <span className={`status-dot ${status}`} title={`engine: ${status}`} />
-        <h1>OpenMemory</h1>
-        <select value={projectId} onChange={(e) => setProjectId(e.target.value)}>
-          <option value="">All projects</option>
-          {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-        </select>
-        <input value={config.baseUrl} onChange={(e) => setConfig({ ...config, baseUrl: e.target.value })} />
-        <input value={config.token} onChange={(e) => setConfig({ ...config, token: e.target.value })} placeholder="API token" />
-      </header>
-      <nav className="tabs">
-        {NAV.map(([id, label]) => (
-          <button key={id} className={page === id ? "active" : ""} onClick={() => setPage(id)}>
-            {label}
-          </button>
-        ))}
-      </nav>
-      <main>
-        {page === "overview" && <Overview />}
-        {page === "current" && <CurrentContext />}
-        {page === "projects" && <Projects selectedProjectId={projectId} onSelectProject={setProjectId} />}
-        {page === "memories" && <Memories projectId={projectId} />}
-        {page === "timeline" && <Timeline projectId={projectId} />}
-        {page === "search" && <Search projectId={projectId} />}
-        {page === "diagnostics" && <JsonPanel title="Diagnostics" loader={api.diagnostics} />}
-        {page === "settings" && <Settings />}
-        {page === "preview" && <PreviewSync projectId={projectId || null} />}
-      </main>
+      <aside className="sidebar">
+        <div className="brand">
+          <span className="brand-mark" aria-hidden="true">M</span>
+          <div className="brand-text">
+            <strong>OpenMemory</strong>
+            <span>Continuity Engine</span>
+          </div>
+        </div>
+        <nav>
+          {NAV.map(([id, label]) => (
+            <button key={id} className={page === id ? "nav-item active" : "nav-item"} onClick={() => setPage(id)}>
+              <Icon name={id} />
+              {label}
+            </button>
+          ))}
+        </nav>
+        <div className="sidebar-foot">
+          <span className={`status-pill ${status}`}>
+            {status === "ok" ? "Engine connected" : status === "bad" ? "Engine offline" : "Connecting…"}
+          </span>
+        </div>
+      </aside>
+      <div className="content">
+        <header className="topbar">
+          <h1>{pageLabel}</h1>
+          <select value={projectId} onChange={(e) => setProjectId(e.target.value)} aria-label="Project">
+            <option value="">All projects</option>
+            {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+          </select>
+        </header>
+        <main>
+          {page === "overview" && <Overview />}
+          {page === "current" && <CurrentContext />}
+          {page === "projects" && <Projects selectedProjectId={projectId} onSelectProject={setProjectId} />}
+          {page === "memories" && <Memories projectId={projectId} />}
+          {page === "timeline" && <Timeline projectId={projectId} />}
+          {page === "search" && <Search projectId={projectId} />}
+          {page === "diagnostics" && <JsonPanel title="Diagnostics" loader={api.diagnostics} />}
+          {page === "settings" && <Settings config={config} onConfigChange={setConfig} />}
+          {page === "preview" && <PreviewSync projectId={projectId || null} />}
+        </main>
+      </div>
     </div>
+  );
+}
+
+/** 16px stroke icons (Lucide-style paths), keyed by page id — no icon dependency. */
+const ICON_PATHS: Record<Page, string> = {
+  overview: "M3 3h7v9H3zM14 3h7v5h-7zM14 12h7v9h-7zM3 16h7v5H3z",
+  current: "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z",
+  projects: "M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z",
+  memories: "M12 3c4.97 0 9 1.34 9 3s-4.03 3-9 3-9-1.34-9-3 4.03-3 9-3M3 6v6c0 1.66 4.03 3 9 3s9-1.34 9-3V6M3 12v6c0 1.66 4.03 3 9 3s9-1.34 9-3v-6",
+  timeline: "M12 8v4l3 3M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z",
+  search: "M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM21 21l-4.35-4.35",
+  diagnostics: "M22 12h-4l-3 9L9 3l-3 9H2",
+  settings: "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.01a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.01a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z",
+  preview: "M22 2 11 13M22 2l-7 20-4-9-9-4z",
+};
+
+function Icon({ name }: { name: Page }) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d={ICON_PATHS[name]} />
+    </svg>
   );
 }
 
@@ -284,7 +321,6 @@ function Search({ projectId }: { projectId: string }) {
   const [error, setError] = useState<string | null>(null);
   const run = () => q.trim() && api.dashboardSearch({ q: q.trim(), project_id: projectId || undefined }).then(setResults).catch((e) => setError(String(e.message ?? e)));
   return <section>
-    <h2>Search</h2>
     <div className="toolbar"><input value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => e.key === "Enter" && run()} placeholder="Search summaries, workspaces, memories, projects" /><button className="action" onClick={run}>Search</button></div>
     <State error={error} loading={false} />
     {results && <>
@@ -296,8 +332,19 @@ function Search({ projectId }: { projectId: string }) {
   </section>;
 }
 
-function Settings() {
-  return <JsonPanel title="Settings" loader={api.settings} />;
+function Settings({ config, onConfigChange }: { config: ApiConfig; onConfigChange: (c: ApiConfig) => void }) {
+  return <section>
+    <article className="panel">
+      <h3>Connection</h3>
+      <div className="settings-grid">
+        <label htmlFor="cfg-url">Engine URL</label>
+        <input id="cfg-url" value={config.baseUrl} onChange={(e) => onConfigChange({ ...config, baseUrl: e.target.value })} />
+        <label htmlFor="cfg-token">API token</label>
+        <input id="cfg-token" type="password" value={config.token} onChange={(e) => onConfigChange({ ...config, token: e.target.value })} placeholder="Optional" />
+      </div>
+    </article>
+    <JsonPanel title="Engine Settings" loader={api.settings} />
+  </section>;
 }
 
 function PreviewSync({ projectId }: { projectId: string | null }) {
@@ -319,13 +366,18 @@ function JsonPanel({ title, loader }: { title: string; loader: () => Promise<Rec
   return <section><Title title={title} action={refresh} /><State error={error} loading={loading} /><article className="panel"><pre>{data ? JSON.stringify(data, null, 2) : ""}</pre></article></section>;
 }
 
-function Title({ title, action }: { title: string; action?: () => void }) {
-  return <div className="section-title"><h2>{title}</h2>{action && <button className="action" onClick={action}>Refresh</button>}</div>;
+function Title({ action }: { title?: string; action?: () => void }) {
+  // The sticky topbar already names the page; this row only carries actions.
+  return action ? <div className="section-title"><button className="action" onClick={action}>Refresh</button></div> : null;
 }
 
 function State({ error, loading }: { error: string | null; loading: boolean }) {
   if (error) return <p className="error">{error}</p>;
-  if (loading) return <p className="muted">Loading...</p>;
+  if (loading) {
+    return <div className="skeleton-stack" aria-label="Loading" role="status">
+      <div className="skeleton" /><div className="skeleton" /><div className="skeleton" />
+    </div>;
+  }
   return null;
 }
 
