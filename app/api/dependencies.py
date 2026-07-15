@@ -129,8 +129,6 @@ def get_context_pipeline(request: Request) -> ContextPipeline:
             ranking_engine=RankingEngine(),
             context_builder=ContextBuilder(),
             repository=_get_repository(state),
-            session_repository=SessionRepository(state.db),
-            working_memory_repository=get_working_memory_repository(request),
             workspace_repository=state.workspace_repository,
             project_state_repository=state.project_state_repository,
             conversation_summary_repository=state.conversation_summary_repository,

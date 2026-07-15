@@ -11,8 +11,6 @@ from app.engine.retrieval.ranking_engine import RankingEngine
 from app.engine.retrieval.retrieval_engine import RetrievalEngine
 from app.main import create_app
 from app.memory.repositories.memory_repository import MemoryRepository
-from app.memory.repositories.session_repository import SessionRepository
-from app.memory.repositories.working_memory_repository import WorkingMemoryRepository
 from tests.integration.test_ingestion_pipeline import FakeEmbedder, pipeline  # noqa: F401
 
 CONTEXT = "/api/v1/context"
@@ -27,8 +25,6 @@ def client(pipeline, db_conn, vector_store):  # noqa: F811
         ranking_engine=RankingEngine(),
         context_builder=ContextBuilder(),
         repository=repo,
-        session_repository=SessionRepository(db_conn),
-        working_memory_repository=WorkingMemoryRepository(db_conn),
     )
     app = create_app()
     app.dependency_overrides[get_ingestion_pipeline] = lambda: pipeline
