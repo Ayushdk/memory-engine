@@ -10,20 +10,11 @@ beforeEach(() => {
 });
 
 describe("App", () => {
-  it("renders the dashboard navigation sections", async () => {
+  it("renders the four primary sections and the global search", async () => {
     render(<App />);
-    for (const label of [
-      "Overview",
-      "Current Context",
-      "Projects",
-      "Memories",
-      "Timeline",
-      "Search",
-      "Diagnostics",
-      "Settings",
-      "Preview Sync",
-    ]) {
+    for (const label of ["Overview", "Activity", "Projects", "Settings"]) {
       expect(await screen.findByRole("button", { name: label })).toBeInTheDocument();
     }
+    expect(screen.getByRole("searchbox", { name: "Search" })).toBeInTheDocument();
   });
 });
