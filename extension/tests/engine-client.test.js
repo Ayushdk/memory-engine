@@ -80,6 +80,20 @@ describe("request shaping", () => {
     expect(stub.calls[0].url).toBe("http://127.0.0.1:8765/api/v1/memories/mem_01ABC");
     expect(stub.calls[0].init.method).toBe("DELETE");
   });
+
+  it("resetCapture encodes the session id into the reset path", async () => {
+    const stub = fakeFetch();
+    await client(stub).resetCapture("chatgpt/a b");
+    expect(stub.calls[0].url).toBe("http://127.0.0.1:8765/api/v1/capture/chatgpt%2Fa%20b/reset");
+    expect(stub.calls[0].init.method).toBe("POST");
+  });
+
+  it("listProjects reads the engine project list", async () => {
+    const stub = fakeFetch(200, [{ id: "proj_om", name: "OpenMemory" }]);
+    await client(stub).listProjects();
+    expect(stub.calls[0].url).toBe("http://127.0.0.1:8765/api/v1/projects");
+    expect(stub.calls[0].init.method).toBe("GET");
+  });
 });
 
 describe("auth header", () => {

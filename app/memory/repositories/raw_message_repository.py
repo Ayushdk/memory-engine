@@ -1,9 +1,11 @@
 """Raw message repository — the append-only conversation ledger.
 
-Rows are never deleted (architecture requirement: complete history always
-survives). `mark_summarized_by_ids` is the only mutation, and it only ever
-flips the flag for messages already folded into the session's rolling
-Current Context Summary (app.jobs.conversation_summary_jobs).
+Rows survive forever once processed (complete history always survives).
+The single exception is `delete_unsummarized`: an explicit user "discard
+this capture" from the extension may remove messages that have NOT yet been
+folded into the rolling Current Context Summary — anything already
+summarized is immutable. `mark_summarized_by_ids` is the only other
+mutation (app.jobs.conversation_summary_jobs).
 """
 
 import sqlite3
@@ -93,6 +95,16 @@ class RawMessageRepository:
             # Caller owns the transaction (paired with another repository's
             # write, e.g. conversation_summary_jobs saving the summary).
             self._conn.executemany(sql, args)
+
+    def delete_unsummarized(self, session_id: str) -> int:
+        """User-invoked capture discard: drop the session's messages that no
+        summary has consumed yet. Summarized rows are never touched."""
+        with self._conn:
+            cursor = self._conn.execute(
+                "DELETE FROM raw_messages WHERE session_id = ? AND summarized = 0",
+                (session_id,),
+            )
+        return cursor.rowcount
 
     def list(self, session_id: str) -> list[RawMessage]:
         rows = self._conn.execute(

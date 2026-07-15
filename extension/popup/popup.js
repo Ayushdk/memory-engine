@@ -49,12 +49,19 @@ document.getElementById("dashboard").addEventListener("click", async () => {
   await chrome.tabs.create({ url });
 });
 
-document.getElementById("capture-reset").addEventListener("click", async () => {
-  if (!confirm("Discard the current unsynced capture and reset the counter? Already-synced knowledge is untouched.")) {
+document.getElementById("capture-reset").addEventListener("click", async (event) => {
+  if (!confirm("Discard the current unsynced capture and reset the counter? Generated summaries and memories are untouched.")) {
     return;
   }
-  await chrome.runtime.sendMessage({ type: "reset-capture" });
-  refresh();
+  const button = event.currentTarget;
+  button.disabled = true;
+  try {
+    const tab = await currentTab();
+    await chrome.runtime.sendMessage({ type: "reset-capture", sessionId: tab?.sessionId ?? null });
+    await refresh();
+  } finally {
+    button.disabled = false;
+  }
 });
 
 document.getElementById("capture-toggle").addEventListener("change", async (event) => {
@@ -69,11 +76,14 @@ document.getElementById("project").addEventListener("change", async (event) => {
   let projectId = event.target.value;
   if (projectId === CREATE_PROJECT_VALUE) {
     const name = prompt("New project name:")?.trim();
-    if (!name) return refresh(); // cancelled — snap back to the saved value
+    if (!name) {
+      await refresh(); // cancelled — snap back to the saved value
+      return;
+    }
     projectId = name;
   }
   await chrome.runtime.sendMessage({ type: "set-settings", patch: { projectId } });
-  refresh();
+  await refresh();
 });
 
 refresh();

@@ -105,6 +105,17 @@ class EpisodeRepository:
             ).rowcount
         return self.get(episode_id) if updated else None
 
+    def delete_open(self, session_id: str) -> str | None:
+        """User-invoked capture discard: drop the session's OPEN episode so it
+        never reaches summarization. Closed/summarized episodes are history
+        and are never deleted. Returns the discarded episode id, if any."""
+        episode = self.get_open(session_id)
+        if episode is None:
+            return None
+        with self._conn:
+            self._conn.execute("DELETE FROM episodes WHERE id = ? AND status = 'open'", (episode.id,))
+        return episode.id
+
     def set_summary(self, episode_id: str, summary: str) -> None:
         """closed → summarized."""
         with self._conn:

@@ -329,4 +329,50 @@ describe("reset-capture message", () => {
     const status = await core.handle({ type: "status" });
     expect(status.stats).toEqual({ ...DEFAULT_STATS, lastSyncAt: "2026-07-05T10:00:00Z" });
   });
+
+  it("asks the engine to discard the active session before refreshing local stats", async () => {
+    const resetSessions = [];
+    const session = fakeArea({
+      ingested: 3,
+      lastMemoryAt: "2026-07-05T10:05:00Z",
+      lastSyncAt: "2026-07-05T10:00:00Z",
+    });
+    const core = createCore({
+      local: fakeArea({ engineUrl: "http://engine.local" }),
+      session,
+      clientFactory: () => ({
+        async resetCapture(sessionId) {
+          resetSessions.push(sessionId);
+        },
+      }),
+    });
+
+    expect(await core.handle({ type: "reset-capture", sessionId: "chatgpt-abc" })).toEqual({ ok: true });
+    expect(resetSessions).toEqual(["chatgpt-abc"]);
+    expect(session.data).toMatchObject({ ...DEFAULT_STATS, lastSyncAt: "2026-07-05T10:00:00Z" });
+  });
+
+  it("still clears local stats and reports the engine error if backend reset fails", async () => {
+    const session = fakeArea({
+      ingested: 9,
+      lastError: "old",
+      lastErrorAt: "2026-07-05T10:06:00Z",
+      lastSyncAt: "2026-07-05T10:00:00Z",
+    });
+    const core = createCore({
+      local: fakeArea(),
+      session,
+      clientFactory: () => ({
+        async resetCapture() {
+          throw new Error("ECONNREFUSED");
+        },
+      }),
+    });
+
+    expect(await core.handle({ type: "reset-capture", sessionId: "chatgpt-abc" })).toEqual({
+      ok: false,
+      error: "ECONNREFUSED",
+    });
+    expect(session.data).toMatchObject({ ...DEFAULT_STATS, lastSyncAt: "2026-07-05T10:00:00Z" });
+  });
 });

@@ -97,6 +97,12 @@ export class EngineClient {
     return this._request("DELETE", `/api/v1/memories/${encodeURIComponent(memoryId)}`);
   }
 
+  /** Discard the session's unsummarized capture (raw buffer + open episode).
+   *  Already-generated summaries, brain, and memories are untouched. */
+  async resetCapture(sessionId) {
+    return this._request("POST", `/api/v1/capture/${encodeURIComponent(sessionId)}/reset`);
+  }
+
   /** Projects the engine has seen work for (popup project dropdown). */
   async listProjects() {
     return this._request("GET", "/api/v1/projects");

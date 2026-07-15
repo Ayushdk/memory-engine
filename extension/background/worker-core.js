@@ -126,13 +126,24 @@ export function createCore({
     },
 
     /**
-     * Popup Reset: discard the extension's current capture state — counter
-     * back to 0, stale errors cleared. Extension-local only: nothing already
-     * synced to the engine (summaries, brain, memories) is touched.
+     * Popup Reset: a REAL discard of the current unsynced capture. Tells the
+     * engine to drop the session's unsummarized raw messages, open episode,
+     * and working-memory buffer, then zeroes the local counter and clears
+     * stale errors. Generated summaries, brain, and memories are untouched.
+     * The local reset happens even if the engine call fails, so the popup
+     * never gets stuck; the error is surfaced in the reply.
      */
-    async "reset-capture"() {
+    async "reset-capture"({ sessionId = null } = {}) {
+      let engineError = null;
+      if (sessionId) {
+        try {
+          await (await getClient()).resetCapture(sessionId);
+        } catch (error) {
+          engineError = error.message;
+        }
+      }
       await session.set({ ...DEFAULT_STATS, lastSyncAt: (await getStats()).lastSyncAt });
-      return { ok: true };
+      return engineError ? { ok: false, error: engineError } : { ok: true };
     },
 
     /** Adapter selectors broke: surface it via the activity indicator. */

@@ -51,6 +51,9 @@ class IngestionPipeline:
     ) -> None:
         self._episodes = episode_tracker
         self._working_memory = working_memory
+        # Exposed for the capture-reset route: discarding a session's buffer
+        # must clear the LIVE manager, not just the snapshot row.
+        self.working_memory = working_memory
         self._classifier = classifier
         self._scorer = scorer
         self._router = router
