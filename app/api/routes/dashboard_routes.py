@@ -6,11 +6,12 @@ import sqlite3
 from datetime import datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from app.api.dependencies import (
     get_conversation_summary_repository,
     get_episode_repository,
+    get_memory_admin,
     get_memory_repository,
     get_project_repository,
     get_project_state_repository,
@@ -18,6 +19,7 @@ from app.api.dependencies import (
     get_workspace_repository,
 )
 from app.core.config import get_settings
+from app.engine.orchestrator.memory_admin import MemoryAdmin
 from app.memory.repositories.conversation_summary_repository import (
     ConversationSummaryRepository,
 )
@@ -185,6 +187,23 @@ def search(
                 (like, like),
             ).fetchall()
         ],
+    }
+
+
+@router.delete("/memories/{memory_id}")
+def delete_dashboard_memory(
+    memory_id: str,
+    admin: Annotated[MemoryAdmin, Depends(get_memory_admin)],
+) -> dict:
+    result = admin.delete(memory_id)
+    if not result.found and result.synchronization_status == "not_found":
+        raise HTTPException(status_code=404, detail=f"memory '{memory_id}' not found")
+    return {
+        "memory_id": result.memory_id,
+        "found": result.found,
+        "success": result.success,
+        "synchronization_status": result.synchronization_status,
+        "reasoning": result.reasoning,
     }
 
 

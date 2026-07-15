@@ -181,23 +181,89 @@ function Memories({ projectId }: { projectId: string }) {
   const [status, setStatus] = useState<MemoryStatus>("active");
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState("updated");
+  const [category, setCategory] = useState("");
+  const [importance, setImportance] = useState("");
+  const [confidence, setConfidence] = useState("");
+  const [projectFilter, setProjectFilter] = useState("");
+  const [dateFilter, setDateFilter] = useState("");
+  const [deletedIds, setDeletedIds] = useState<Set<string>>(() => new Set());
+  const [confirmDelete, setConfirmDelete] = useState<Memory | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const { data, error, loading, refresh } = useLoad(() => api.listMemories({ project_id: projectId || undefined, status, limit: 1000 }), [projectId, status]);
+  const allMemories = useMemo(
+    () => (data?.memories ?? []).filter((memory) => !deletedIds.has(memory.id)),
+    [data, deletedIds],
+  );
+  const categories = useMemo(() => unique(allMemories.map((memory) => memory.category)), [allMemories]);
+  const projects = useMemo(
+    () => unique(allMemories.map((memory) => memory.project_id).filter(Boolean) as string[]),
+    [allMemories],
+  );
   const memories = useMemo(() => {
     const q = query.toLowerCase();
-    const rows = (data?.memories ?? []).filter((m) => !q || `${m.content} ${m.summary ?? ""} ${m.category}`.toLowerCase().includes(q));
+    const rows = allMemories.filter((m) => {
+      if (q && !memorySearchText(m).includes(q)) return false;
+      if (category && m.category !== category) return false;
+      if (importance && importanceBand(m.importance) !== importance) return false;
+      if (confidence && m.confidence !== confidence) return false;
+      if (projectFilter && m.project_id !== projectFilter) return false;
+      if (dateFilter && !matchesDateFilter(m.created_at, dateFilter)) return false;
+      return true;
+    });
     return rows.sort((a, b) => sort === "importance" ? b.importance - a.importance : Date.parse(b.updated_at) - Date.parse(a.updated_at));
-  }, [data, query, sort]);
+  }, [allMemories, category, confidence, dateFilter, importance, projectFilter, query, sort]);
+
+  function reload() {
+    setDeletedIds(new Set());
+    refresh();
+  }
+
+  async function deleteMemory(memory: Memory) {
+    setDeletingId(memory.id);
+    try {
+      await api.deleteMemory(memory.id);
+      setDeletedIds((ids) => new Set(ids).add(memory.id));
+      setConfirmDelete(null);
+      void api.overview();
+      if (memory.project_id) void api.projectDashboard();
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
   return <section>
-    <Title title="Memories" action={refresh} />
-    <div className="toolbar">
-      <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search memories" />
-      <select value={status} onChange={(e) => setStatus(e.target.value as MemoryStatus)}><option>active</option><option>superseded</option><option>archived</option><option>merged</option></select>
+    <Title title="Memories" action={reload} />
+    <div className="memory-summary">
+      <Metric label="Visible" value={String(memories.length)} />
+      <Metric label="Total Loaded" value={String(allMemories.length)} />
+      <Metric label="Project" value={projectId || "All projects"} />
+    </div>
+    <div className="memory-toolbar">
+      <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search text, category, tags, source, project" />
+      <select value={status} onChange={(e) => setStatus(e.target.value as MemoryStatus)}><option value="active">Active</option><option value="superseded">Superseded</option><option value="archived">Archived</option><option value="merged">Merged</option></select>
+      <select value={category} onChange={(e) => setCategory(e.target.value)}><option value="">All categories</option>{categories.map((item) => <option key={item} value={item}>{humanize(item)}</option>)}</select>
+      <select value={importance} onChange={(e) => setImportance(e.target.value)}><option value="">Any importance</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option></select>
+      <select value={confidence} onChange={(e) => setConfidence(e.target.value)}><option value="">Any confidence</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option></select>
+      <select value={projectFilter} onChange={(e) => setProjectFilter(e.target.value)} disabled={Boolean(projectId)}><option value="">Any project</option>{projects.map((item) => <option key={item} value={item}>{item}</option>)}</select>
+      <select value={dateFilter} onChange={(e) => setDateFilter(e.target.value)}><option value="">Any date</option><option value="today">Today</option><option value="week">Last 7 days</option><option value="month">Last 30 days</option></select>
       <select value={sort} onChange={(e) => setSort(e.target.value)}><option value="updated">Last updated</option><option value="importance">Importance</option></select>
     </div>
     <State error={error} loading={loading} />
-    {Object.entries(MEMORY_GROUPS).map(([group, cats]) => (
-      <MemoryGroup key={group} title={group} memories={memories.filter((m) => cats.includes(m.category))} />
-    ))}
+    {!loading && memories.length === 0 ? <EmptyMemories /> : (
+      <div className="memory-grid">
+        {memories.map((memory) => (
+          <MemoryCard key={memory.id} memory={memory} onDelete={() => setConfirmDelete(memory)} />
+        ))}
+      </div>
+    )}
+    {confirmDelete && (
+      <DeleteMemoryDialog
+        memory={confirmDelete}
+        busy={deletingId === confirmDelete.id}
+        onCancel={() => setConfirmDelete(null)}
+        onConfirm={() => deleteMemory(confirmDelete)}
+      />
+    )}
   </section>;
 }
 
@@ -275,8 +341,160 @@ function List({ title, items }: { title: string; items: string[] }) {
   return <section className="block"><h3>{title}</h3>{items.length ? <ul className="plain">{items.map((item, i) => <li key={i}>{item}</li>)}</ul> : <p className="muted">None yet.</p>}</section>;
 }
 
-function MemoryGroup({ title, memories }: { title: string; memories: Memory[] }) {
-  return <section className="panel"><h3>{title}</h3>{memories.length ? <ul className="plain">{memories.map((m) => <li key={m.id}><span className="badge">{m.category}</span><span className="badge">{m.confidence}</span>{m.summary || m.content}<span className="muted"> · {formatDate(m.updated_at)}</span></li>)}</ul> : <p className="muted">No matching memories.</p>}</section>;
+function MemoryCard({ memory, onDelete }: { memory: Memory; onDelete: () => void }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+  const text = memory.summary || memory.content;
+  const isLong = text.length > 280;
+  const visibleText = expanded || !isLong ? text : `${text.slice(0, 280).trim()}...`;
+  const source = formatSource(memory);
+
+  function copyMemory() {
+    void navigator.clipboard?.writeText(memory.content);
+    setMenuOpen(false);
+  }
+
+  return (
+    <article className="memory-card">
+      <div className="memory-card-head">
+        <div>
+          <span className="memory-category">{humanize(categoryGroup(memory.category) ?? memory.category)}</span>
+          <div className="memory-badges">
+            <span className={`badge importance-${importanceBand(memory.importance)}`}>Importance {importanceLabel(memory.importance)}</span>
+            <span className="badge">Confidence {confidenceScore(memory.confidence)}</span>
+          </div>
+        </div>
+        <div className="memory-menu-wrap">
+          <button className="icon-button" aria-label="Memory actions" onClick={() => setMenuOpen((open) => !open)}>⋮</button>
+          {menuOpen && (
+            <div className="memory-menu">
+              <button onClick={copyMemory}>Copy Memory</button>
+              <button className="menu-danger" onClick={() => { setMenuOpen(false); onDelete(); }}>Delete Memory</button>
+              <div className="menu-separator" />
+              <span>Coming Soon</span>
+              <button disabled>Edit Memory</button>
+              <button disabled>Merge Memory</button>
+              <button disabled>Archive Memory</button>
+              <button disabled>Pin Memory</button>
+            </div>
+          )}
+        </div>
+      </div>
+      <p className="memory-text">{visibleText}</p>
+      {isLong && <button className="text-link" onClick={() => setExpanded((value) => !value)}>{expanded ? "Collapse" : "Expand"}</button>}
+      <dl className="memory-meta">
+        <div><dt>Created</dt><dd>{relativeTime(memory.created_at)}</dd></div>
+        <div><dt>Last Reinforced</dt><dd>{memory.reinforcement_count > 0 ? relativeTime(memory.updated_at) : "Never"}</dd></div>
+        <div><dt>Source</dt><dd title={source}>{source}</dd></div>
+      </dl>
+    </article>
+  );
+}
+
+function DeleteMemoryDialog({ memory, busy, onCancel, onConfirm }: { memory: Memory; busy: boolean; onCancel: () => void; onConfirm: () => void }) {
+  return (
+    <div className="modal-backdrop" role="presentation">
+      <section className="modal" role="dialog" aria-modal="true" aria-labelledby="delete-memory-title">
+        <h2 id="delete-memory-title">Delete Memory</h2>
+        <p>Are you sure you want to permanently delete this memory?</p>
+        <p className="error">This action cannot be undone.</p>
+        <div className="memory-preview">
+          <span>Memory Preview</span>
+          <blockquote>{previewText(memory.summary || memory.content)}</blockquote>
+        </div>
+        <div className="modal-actions">
+          <button className="action" onClick={onCancel} disabled={busy}>Cancel</button>
+          <button className="action destructive" onClick={onConfirm} disabled={busy}>{busy ? "Deleting..." : "Delete Memory"}</button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function EmptyMemories() {
+  return (
+    <div className="empty-state">
+      <div className="empty-icon" aria-hidden="true" />
+      <h3>No memories found.</h3>
+    </div>
+  );
+}
+
+function categoryGroup(category: string) {
+  return Object.entries(MEMORY_GROUPS).find(([, categories]) => categories.includes(category))?.[0];
+}
+
+function humanize(value: string) {
+  return value.replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function importanceBand(value: number) {
+  if (value >= 8) return "high";
+  if (value >= 4) return "medium";
+  return "low";
+}
+
+function importanceLabel(value: number) {
+  return `${humanize(importanceBand(value))} (${value}/10)`;
+}
+
+function confidenceScore(confidence: string) {
+  if (confidence === "high") return "0.94";
+  if (confidence === "medium") return "0.72";
+  return "0.45";
+}
+
+function formatSource(memory: Memory) {
+  if (!memory.source) return memory.project_id ? `Project ${memory.project_id}` : "Unknown";
+  const parts = [humanize(memory.source.platform), memory.source.role];
+  if (memory.source.session_id) parts.push(memory.source.session_id);
+  if (memory.source.episode_id) parts.push(memory.source.episode_id);
+  return parts.join(" / ");
+}
+
+function memorySearchText(memory: Memory) {
+  return [
+    memory.content,
+    memory.summary ?? "",
+    memory.category,
+    memory.tags.join(" "),
+    formatSource(memory),
+    memory.project_id ?? "",
+  ].join(" ").toLowerCase();
+}
+
+function matchesDateFilter(value: string, filter: string) {
+  const created = Date.parse(value);
+  if (Number.isNaN(created)) return false;
+  const now = Date.now();
+  if (filter === "today") return new Date(created).toDateString() === new Date(now).toDateString();
+  if (filter === "week") return now - created <= 7 * 24 * 60 * 60 * 1000;
+  if (filter === "month") return now - created <= 30 * 24 * 60 * 60 * 1000;
+  return true;
+}
+
+function relativeTime(value: string | null | undefined) {
+  if (!value) return "Never";
+  const timestamp = Date.parse(value);
+  if (Number.isNaN(timestamp)) return value;
+  const diff = Date.now() - timestamp;
+  if (diff < 60_000) return "Just now";
+  const minutes = Math.floor(diff / 60_000);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  if (hours < 48) return "Yesterday";
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days}d ago`;
+  return formatDate(value);
+}
+
+function previewText(value: string) {
+  return value.length > 160 ? `${value.slice(0, 160).trim()}...` : value;
+}
+
+function unique(values: string[]) {
+  return Array.from(new Set(values)).sort((a, b) => a.localeCompare(b));
 }
 
 function formatDate(value: string | null | undefined) {

@@ -17,6 +17,12 @@ export interface Memory {
   confidence: Confidence;
   status: MemoryStatus;
   supersedes: string | null;
+  source: {
+    platform: string;
+    session_id: string | null;
+    role: "user" | "assistant";
+    episode_id: string | null;
+  } | null;
   tags: string[];
   created_at: string;
   updated_at: string;
@@ -206,7 +212,7 @@ export const api = {
   listProjects: () => request<Project[]>("/projects"),
   listMemories: (params: { view?: MemoryView; project_id?: string; status?: MemoryStatus; limit?: number }) =>
     request<{ memories: Memory[]; count: number }>(`/memories?${qs(params)}`),
-  deleteMemory: (id: string) => request<unknown>(`/memories/${id}`, { method: "DELETE" }),
+  deleteMemory: (id: string) => request<unknown>(`/dashboard/memories/${id}`, { method: "DELETE" }),
   listEpisodes: (params: { project_id?: string; limit?: number }) =>
     request<Episode[]>(`/episodes?${qs(params)}`),
   getWorkspace: (projectId: string) => request<Workspace>(`/workspace/${projectId}`),

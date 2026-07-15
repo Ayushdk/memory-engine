@@ -49,6 +49,27 @@ def test_delete_removes_from_both_stores(client, repo, vector_store, seeded):
     assert vector_store.count() == 0
 
 
+def test_dashboard_delete_removes_from_both_stores_and_relations(
+    client, repo, vector_store, db_conn, seeded,
+):
+    with db_conn:
+        db_conn.execute(
+            "INSERT INTO memory_relations (from_id, to_id, relation, created_at) "
+            "VALUES (?,?,?,?)",
+            (seeded.id, "mem_other", "merged_from", "2026-01-01T00:00:00Z"),
+        )
+
+    response = client.delete(f"/api/v1/dashboard/memories/{seeded.id}")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["success"] is True
+    assert body["synchronization_status"] == "in_sync"
+    assert repo.get(seeded.id) is None
+    assert vector_store.count() == 0
+    assert db_conn.execute("SELECT COUNT(*) FROM memory_relations").fetchone()[0] == 0
+
+
 def test_unknown_id_is_404(client):
     response = client.delete("/api/v1/memories/mem_missing")
     assert response.status_code == 404

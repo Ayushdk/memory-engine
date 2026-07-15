@@ -155,4 +155,9 @@ class MemoryRepository:
         """Hard delete — the user's right to forget."""
         with self._conn:
             cur = self._conn.execute("DELETE FROM memories WHERE id = ?", (memory_id,))
+            if cur.rowcount > 0:
+                self._conn.execute(
+                    "DELETE FROM memory_relations WHERE from_id = ? OR to_id = ?",
+                    (memory_id, memory_id),
+                )
         return cur.rowcount > 0
